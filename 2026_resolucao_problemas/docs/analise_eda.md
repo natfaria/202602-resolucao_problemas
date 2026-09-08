@@ -201,14 +201,18 @@ deste projeto inteiro.
 ### Um segundo torneio, agora para decidir o tratamento
 Isso levantou a pergunta certa: qual tratamento realmente generaliza melhor pra dados novos? Testamos
 formalmente 4 alternativas, cruzadas com as duas formas de agrupar dia (dia a dia vs. o agrupamento
-vencedor do Capítulo 5), usando o mesmo critério de sempre (MAPE fora da amostra, BIC, significância):
+vencedor do Capítulo 5) — **8 combinações no total**, todas ajustadas e comparadas no notebook.
+A tabela abaixo mostra as duas colunas de MAPE lado a lado, para não esconder metade do resultado:
 
-| Tratamento | O que é | MAPE teste (agrupado) | Veredito |
-|---|---|---|---|
-| **Atual (capping IQR)** | Corta os valores acima do teto antes de ajustar qualquer modelo | 56,5% | Era o tratamento em uso — bom, mas não o melhor |
-| **Bruto** | Não trata outlier nenhum | 56,5% | Empata em erro, mas perde em BIC — abandonar o tratamento sem pôr nada no lugar não ajuda |
-| **Remoção pela curva** | Descobre os pontos influentes (Premissa B) e os remove do treino | 57,4% | **Perdeu** — com pouco dado, descartar informação dói mais do que ajuda |
-| **Regressão robusta (Huber)** | Cada ponto é automaticamente reponderado pelo tamanho do seu próprio "erro" — nenhum dado é descartado | 56,3% | 🏆 **Venceu** — iguala/supera o atual, sem descartar dado, sem precisar de um teto arbitrário |
+| Tratamento | O que é | MAPE teste (dia a dia) | MAPE teste (agrupado) | Veredito |
+|---|---|---|---|---|
+| **Atual (capping IQR)** | Corta os valores acima do teto antes de ajustar qualquer modelo | 55,7% | 56,5% | Era o tratamento em uso — bom, mas não o melhor |
+| **Bruto** | Não trata outlier nenhum | 56,2% | 56,5% | Empata em erro, mas perde em BIC — abandonar o tratamento sem pôr nada no lugar não ajuda |
+| **Remoção pela curva** | Descobre os pontos influentes (Premissa B) e os remove do treino | 57,3% | 57,4% | **Perdeu** — com pouco dado, descartar informação dói mais do que ajuda |
+| **Regressão robusta (Huber)** | Cada ponto é automaticamente reponderado pelo tamanho do seu próprio "erro" — nenhum dado é descartado | 55,8% | 56,3% | 🏆 **Venceu** — iguala/supera o atual, sem descartar dado, sem precisar de um teto arbitrário |
+
+A ordem entre tratamentos é a mesma nas duas colunas — a decisão não depende de qual agrupamento de
+dia se olha primeiro.
 
 **Por que "remover pela curva" perdeu, se ela identifica os pontos certos?** Porque nossa amostra é
 pequena (66-76 dias). Remover até poucos pontos reduz ainda mais o quanto o modelo tem para aprender
