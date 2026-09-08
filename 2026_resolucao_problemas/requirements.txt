@@ -5,12 +5,15 @@ matplotlib
 mkdocs
 notebook
 numpy
+openpyxl
 pandas
 pip
 pytest
 python-dotenv
 ruff
 scikit-learn
+seaborn
+statsmodels
 tqdm
 typer
 -e .
