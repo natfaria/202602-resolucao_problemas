@@ -13,9 +13,7 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Dados e Modelos (Evita enviar arquivos pesados para o GitHub)
-#data/raw/
-#data/processed/
-#data/interim/
+
 models/*.pkl
 models/*.h5
 
