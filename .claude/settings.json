@@ -2,7 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(/Users/ngodeny/Documents/mestrado/2026-resolucao_problemas/.venv/bin/python3 -c ' *)",
-      "Bash(echo \"limites diff exit: $?\")"
+      "Bash(echo \"limites diff exit: $?\")",
+      "Bash(curl -sS -o /dev/null -w \"furycloud simple index: %{http_code}\\\\n\" --max-time 15 \"https://pypi.artifacts.furycloud.io/simple/\")",
+      "Bash(curl -sS -o /dev/null -w \"furycloud statsmodels: %{http_code}\\\\n\" --max-time 15 \"https://pypi.artifacts.furycloud.io/simple/statsmodels/\")",
+      "Bash(python3 -c ' *)",
+      "Bash(/Users/ngodeny/Documents/mestrado/202602-resolucao_problemas/venv/bin/python3 --version)",
+      "Bash(/Users/ngodeny/Documents/mestrado/202602-resolucao_problemas/venv/bin/python3 -c \"import statsmodels, pandas, numpy, matplotlib, openpyxl; print\\('all good', statsmodels.__version__\\)\")",
+      "Bash(/Users/ngodeny/Documents/mestrado/202602-resolucao_problemas/venv/bin/python3 -c \"import jupyter_client, nbformat, nbconvert; print\\('nbconvert ok'\\)\")",
+      "Bash(/Users/ngodeny/Documents/mestrado/202602-resolucao_problemas/venv/bin/python3 -c \"import src; print\\('src ok', src.__file__\\)\")",
+      "Bash(/Users/ngodeny/Documents/mestrado/202602-resolucao_problemas/venv/bin/python3 -)",
+      "Bash(/Users/ngodeny/Documents/mestrado/202602-resolucao_problemas/venv/bin/python3 -m jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=300 notebooks/01-EDA-regressao_robusta.ipynb)"
     ]
   }
 }
