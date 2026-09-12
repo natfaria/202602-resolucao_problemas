@@ -11,7 +11,10 @@
       "Bash(/Users/ngodeny/Documents/mestrado/202602-resolucao_problemas/venv/bin/python3 -c \"import jupyter_client, nbformat, nbconvert; print\\('nbconvert ok'\\)\")",
       "Bash(/Users/ngodeny/Documents/mestrado/202602-resolucao_problemas/venv/bin/python3 -c \"import src; print\\('src ok', src.__file__\\)\")",
       "Bash(/Users/ngodeny/Documents/mestrado/202602-resolucao_problemas/venv/bin/python3 -)",
-      "Bash(/Users/ngodeny/Documents/mestrado/202602-resolucao_problemas/venv/bin/python3 -m jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=300 notebooks/01-EDA-regressao_robusta.ipynb)"
+      "Bash(/Users/ngodeny/Documents/mestrado/202602-resolucao_problemas/venv/bin/python3 -m jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=300 notebooks/01-EDA-regressao_robusta.ipynb)",
+      "Bash(git rm *)",
+      "Bash(git add *)",
+      "Bash(git restore *)"
     ]
   }
 }
