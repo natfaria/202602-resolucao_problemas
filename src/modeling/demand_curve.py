@@ -1,68 +1,146 @@
-"""Curva de demanda (elasticidade Preço-Volume) do Produto_A.
+"""Curva final de demanda preço-volume.
 
-Volume = A * Preço^-B, com uma elasticidade única (B) para todos os dias e um
-nível (A) por grupo de dia da semana.
+Especificação definida no EDA:
 
-Decisão tomada em notebooks/01-EDA_v3.ipynb (seções "Torneio de Modelos" e
-"Torneio 2: Tratamento de Outlier x Agrupamento"):
-- Agrupamento: Pico (Segunda), TerQuaQui (Terça+Quarta+Quinta), Fraco (Sexta),
-  FimDeSemana (Sábado+Domingo) — venceu o Torneio de Modelos original contra
-  5 alternativas (MAPE fora da amostra, BIC, significância estatística).
-- Tratamento de outlier: regressão robusta (M-estimador de Huber) sobre o
-  Volume bruto, sem capping por IQR. O capping marginal (Premissa A) foi
-  testado formalmente contra alternativas (bruto, remoção por distância de
-  Cook, robusta de Huber) e perdeu: empata ou perde em MAPE fora da amostra,
-  e atenua a elasticidade estimada em ~15-20% sem ganho de generalização.
+``ln(volume) = intercepto_do_cluster + beta * ln(preço) + erro``
+
+O modelo usa OLS, quatro interceptos de nível e uma elasticidade compartilhada.
+As previsões retornam em quilogramas com correção global de smearing de Duan.
 """
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Mapping
 
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-from statsmodels.robust.robust_linear_model import RLMResultsWrapper
+from statsmodels.regression.linear_model import RegressionResultsWrapper
+
 
 CLUSTER_BASE = "TerQuaQui"
+CLUSTERS = ("Segunda", "TerQuaQui", "Sexta", "FimDeSemana")
+COLUNAS_MODELO = ("const", "ln_preco", "Segunda", "Sexta", "FimDeSemana")
 
 
 def assign_cluster(dia_da_semana: str) -> str:
-    """Mapeia um dia da semana para o grupo de demanda (nível A) usado na curva."""
+    """Mapeia o dia da semana para o cluster de nível selecionado no EDA."""
     if dia_da_semana == "Segunda":
-        return "Pico"
+        return "Segunda"
     if dia_da_semana in ("Terça", "Quarta", "Quinta"):
         return "TerQuaQui"
     if dia_da_semana == "Sexta":
-        return "Fraco"
-    return "FimDeSemana"
+        return "Sexta"
+    if dia_da_semana in ("Sábado", "Domingo"):
+        return "FimDeSemana"
+    raise ValueError(f"Dia da semana não reconhecido: {dia_da_semana!r}")
+
+
+@dataclass(frozen=True)
+class DemandCurveModel:
+    """Artefato necessário para prever volume em kg de forma reproduzível."""
+
+    regression: RegressionResultsWrapper
+    smearing_factor: float
+    price_support: Mapping[str, tuple[float, float]]
+
+    @property
+    def params(self) -> pd.Series:
+        """Coeficientes OLS, expostos para inspeção no notebook e relatórios."""
+        return self.regression.params
+
+    @property
+    def pvalues(self) -> pd.Series:
+        """p-valores OLS dos coeficientes estimados."""
+        return self.regression.pvalues
+
+
+def _validate_training_data(df: pd.DataFrame) -> None:
+    required = {"Preço", "Volume Realizado (kg)"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Dados de treino sem as colunas obrigatórias: {sorted(missing)}")
+    if "Cluster" not in df.columns and "Dia da Semana" not in df.columns:
+        raise ValueError("Informe a coluna 'Cluster' ou 'Dia da Semana'.")
+    if (df["Preço"] <= 0).any() or (df["Volume Realizado (kg)"] <= 0).any():
+        raise ValueError("Preço e volume precisam ser estritamente positivos para a transformação logarítmica.")
+
+
+def _with_cluster(df: pd.DataFrame) -> pd.DataFrame:
+    result = df.copy()
+    if "Cluster" not in result.columns:
+        result["Cluster"] = result["Dia da Semana"].map(assign_cluster)
+    invalid = set(result["Cluster"].dropna().unique()) - set(CLUSTERS)
+    if invalid:
+        raise ValueError(f"Clusters não reconhecidos: {sorted(invalid)}")
+    if result["Cluster"].isna().any():
+        raise ValueError("Há observações sem cluster.")
+    return result
 
 
 def _design_matrix(df: pd.DataFrame) -> pd.DataFrame:
-    dummies = pd.get_dummies(df["Cluster"], dtype=int)
-    dummies = dummies.drop(columns=[CLUSTER_BASE], errors="ignore")
-    X = pd.concat([np.log(df["Preço"]).rename("ln_Preco"), dummies], axis=1)
-    return sm.add_constant(X)
+    """Cria uma matriz fixa, com TerQuaQui como categoria de referência."""
+    dummies = pd.get_dummies(df["Cluster"], dtype=float).drop(columns=CLUSTER_BASE, errors="ignore")
+    X = pd.concat([np.log(df["Preço"]).rename("ln_preco"), dummies], axis=1)
+    X = sm.add_constant(X, has_constant="add")
+    return X.reindex(columns=COLUNAS_MODELO, fill_value=0.0)
 
 
-def fit_demand_curve(df: pd.DataFrame) -> RLMResultsWrapper:
-    """Ajusta a curva de demanda oficial sobre os dados de treino.
+def fit_demand_curve(df: pd.DataFrame) -> DemandCurveModel:
+    """Ajusta a curva OLS final e estima o fator global de smearing.
 
-    `df` precisa ter as colunas `Preço` e `Volume Realizado (kg)`, e ou uma
-    coluna `Cluster` já pronta, ou `Dia da Semana` (o cluster é derivado via
-    `assign_cluster`). Sem nenhum tratamento de outlier prévio: a robustez a
-    pontos influentes vem da própria regressão (Huber/IRLS), não de um
-    capping aplicado antes do ajuste.
+    O ajuste deve receber somente o conjunto de treino disponível naquele
+    momento. Nenhum ponto é removido ou limitado antes da regressão.
     """
-    df = df.copy()
-    if "Cluster" not in df.columns:
-        df["Cluster"] = df["Dia da Semana"].apply(assign_cluster)
-    X = _design_matrix(df)
-    y = np.log(df["Volume Realizado (kg)"])
-    return sm.RLM(y, X, M=sm.robust.norms.HuberT()).fit()
+    _validate_training_data(df)
+    training = _with_cluster(df)
+    X = _design_matrix(training)
+    y = np.log(training["Volume Realizado (kg)"])
+    regression = sm.OLS(y, X).fit()
+    smearing_factor = float(np.exp(regression.resid).mean())
+    price_support = {
+        cluster: (float(group["Preço"].min()), float(group["Preço"].max()))
+        for cluster, group in training.groupby("Cluster", observed=True)
+    }
+    return DemandCurveModel(regression, smearing_factor, price_support)
 
 
-def predict_volume(modelo: RLMResultsWrapper, preco: float, cluster: str) -> float:
-    """Prevê o volume esperado (kg) para um preço e grupo de dia dados."""
-    linha = {"const": 1.0, "ln_Preco": np.log(preco)}
-    for col in modelo.params.index:
-        if col not in ("const", "ln_Preco"):
-            linha[col] = 1.0 if col == cluster else 0.0
-    X = pd.DataFrame([linha])[modelo.params.index]
-    return float(np.exp(modelo.predict(X).iloc[0]))
+def _validate_prediction_inputs(model: DemandCurveModel, preco: float, cluster: str) -> None:
+    if preco <= 0:
+        raise ValueError("Preço precisa ser estritamente positivo.")
+    if cluster not in CLUSTERS:
+        raise ValueError(f"Cluster não reconhecido: {cluster!r}")
+    if cluster not in model.price_support:
+        raise ValueError(f"O modelo não foi treinado com observações do cluster {cluster!r}.")
+
+
+def is_within_price_support(model: DemandCurveModel, preco: float, cluster: str) -> bool:
+    """Informa se o preço pertence ao intervalo observado no cluster."""
+    _validate_prediction_inputs(model, preco, cluster)
+    lower, upper = model.price_support[cluster]
+    return lower <= preco <= upper
+
+
+def predict_volume(
+    model: DemandCurveModel,
+    preco: float,
+    cluster: str,
+    *,
+    allow_extrapolation: bool = False,
+) -> float:
+    """Prevê volume médio em kg com a correção global de smearing.
+
+    Por padrão, bloqueia extrapolações, pois o EDA não validou a curva fora da
+    faixa de preço observada no respectivo cluster.
+    """
+    _validate_prediction_inputs(model, preco, cluster)
+    if not allow_extrapolation and not is_within_price_support(model, preco, cluster):
+        lower, upper = model.price_support[cluster]
+        raise ValueError(
+            f"Preço {preco:.2f} fora do suporte observado para {cluster}: "
+            f"[{lower:.2f}, {upper:.2f}]."
+        )
+    row = pd.DataFrame({"Preço": [preco], "Cluster": [cluster]})
+    prediction_log = float(model.regression.predict(_design_matrix(row)).iloc[0])
+    return float(np.exp(prediction_log) * model.smearing_factor)
