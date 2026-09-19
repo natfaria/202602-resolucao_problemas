@@ -10,8 +10,11 @@ As previsões retornam em quilogramas com correção global de smearing de Duan.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
-from typing import Mapping
+from pathlib import Path
+from typing import Any, Mapping
 
 import numpy as np
 import pandas as pd
@@ -54,6 +57,16 @@ class DemandCurveModel:
     def pvalues(self) -> pd.Series:
         """p-valores OLS dos coeficientes estimados."""
         return self.regression.pvalues
+
+
+@dataclass(frozen=True)
+class DemandCurveArtifact:
+    """Representação JSON, auditável e independente de pickle do modelo final."""
+
+    params: Mapping[str, float]
+    smearing_factor: float
+    price_support: Mapping[str, tuple[float, float]]
+    metadata: Mapping[str, Any]
 
 
 def _validate_training_data(df: pd.DataFrame) -> None:
@@ -144,3 +157,87 @@ def predict_volume(
     row = pd.DataFrame({"Preço": [preco], "Cluster": [cluster]})
     prediction_log = float(model.regression.predict(_design_matrix(row)).iloc[0])
     return float(np.exp(prediction_log) * model.smearing_factor)
+
+
+def data_sha256(path: str | Path) -> str:
+    """Calcula o hash SHA-256 da base exata usada no ajuste."""
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def build_artifact(
+    model: DemandCurveModel,
+    training_data_path: str | Path,
+    training_data: pd.DataFrame,
+    *,
+    code_version: str = "ols-4-intercepts-shared-elasticity-smearing-v1",
+) -> DemandCurveArtifact:
+    """Cria um artefato que permite auditar a origem exata da curva."""
+    dates = pd.to_datetime(training_data["Data"])
+    metadata = {
+        "artifact_version": 1,
+        "model_specification": "OLS ln(volume) ~ ln(price) + Segunda + Sexta + FimDeSemana",
+        "code_version": code_version,
+        "training_rows": int(len(training_data)),
+        "training_period": {"start": dates.min().date().isoformat(), "end": dates.max().date().isoformat()},
+        "training_data_file": Path(training_data_path).name,
+        "training_data_sha256": data_sha256(training_data_path),
+        "demand_curve_module_sha256": data_sha256(Path(__file__)),
+        "python_pandas_version": pd.__version__,
+        "statsmodels_version": sm.__version__,
+    }
+    return DemandCurveArtifact(
+        params={key: float(value) for key, value in model.params.items()},
+        smearing_factor=float(model.smearing_factor),
+        price_support={key: (float(lower), float(upper)) for key, (lower, upper) in model.price_support.items()},
+        metadata=metadata,
+    )
+
+
+def save_artifact(artifact: DemandCurveArtifact, path: str | Path) -> None:
+    """Persiste o artefato em JSON legível e determinístico."""
+    payload = {
+        "params": dict(artifact.params),
+        "smearing_factor": artifact.smearing_factor,
+        "price_support": {key: list(value) for key, value in artifact.price_support.items()},
+        "metadata": dict(artifact.metadata),
+    }
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def load_artifact(path: str | Path) -> DemandCurveArtifact:
+    """Carrega o artefato JSON sem desserializar código executável."""
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    return DemandCurveArtifact(
+        params={key: float(value) for key, value in payload["params"].items()},
+        smearing_factor=float(payload["smearing_factor"]),
+        price_support={key: (float(value[0]), float(value[1])) for key, value in payload["price_support"].items()},
+        metadata=payload["metadata"],
+    )
+
+
+def predict_volume_from_artifact(
+    artifact: DemandCurveArtifact,
+    preco: float,
+    cluster: str,
+    *,
+    allow_extrapolation: bool = False,
+) -> float:
+    """Prevê em kg diretamente dos coeficientes persistidos em JSON."""
+    if preco <= 0:
+        raise ValueError("Preço precisa ser estritamente positivo.")
+    if cluster not in CLUSTERS or cluster not in artifact.price_support:
+        raise ValueError(f"Cluster não reconhecido ou ausente no artefato: {cluster!r}")
+    lower, upper = artifact.price_support[cluster]
+    if not allow_extrapolation and not lower <= preco <= upper:
+        raise ValueError(f"Preço {preco:.2f} fora do suporte observado para {cluster}: [{lower:.2f}, {upper:.2f}].")
+    params = artifact.params
+    prediction_log = params["const"] + params["ln_preco"] * np.log(preco)
+    if cluster != CLUSTER_BASE:
+        prediction_log += params.get(cluster, 0.0)
+    return float(np.exp(prediction_log) * artifact.smearing_factor)

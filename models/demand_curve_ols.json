@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "artifact_version": 1,
+    "code_version": "ols-4-intercepts-shared-elasticity-smearing-v1",
+    "demand_curve_module_sha256": "602249bfb0218b5ea240a825da812759e5eac0c99a49671a91ac50c448ca341c",
+    "model_specification": "OLS ln(volume) ~ ln(price) + Segunda + Sexta + FimDeSemana",
+    "python_pandas_version": "3.0.5",
+    "statsmodels_version": "0.14.6",
+    "training_data_file": ".treino.csv",
+    "training_data_sha256": "b5133de62f31f388c5e05d6cedfece7d7f54135cf1d35d41b70c5042d9b2bccf",
+    "training_period": {
+      "end": "2025-10-31",
+      "start": "2025-08-01"
+    },
+    "training_rows": 76
+  },
+  "params": {
+    "FimDeSemana": -2.8830446445721742,
+    "Segunda": 0.33823042256767033,
+    "Sexta": -1.255048003202743,
+    "const": 92.17490038006844,
+    "ln_preco": -12.45810303187104
+  },
+  "price_support": {
+    "FimDeSemana": [
+      1188.863745689,
+      1354.1870996276002
+    ],
+    "Segunda": [
+      1220.4690654586077,
+      1352.4231544551155
+    ],
+    "Sexta": [
+      1208.368389539517,
+      1365.4912605806614
+    ],
+    "TerQuaQui": [
+      1201.6316634282,
+      1344.6312389389814
+    ]
+  },
+  "smearing_factor": 1.1178729107918188
+}
