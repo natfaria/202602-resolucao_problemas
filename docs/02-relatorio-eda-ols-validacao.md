@@ -115,6 +115,8 @@ Usando TerQuaQui como referência, a forma estimada é:
 
 A previsão média em quilogramas é a exponencial dessa expressão multiplicada pelo fator de smearing. A equação deve ser usada apenas dentro da faixa de preços observada em cada grupo. Fora desse suporte, a previsão é extrapolação e não possui validação empírica neste histórico.
 
+O notebook também apresenta as quatro curvas finais do modelo na escala de quilogramas, com os pontos observados e o fator global de smearing aplicado. Cada curva termina no intervalo de preço observado em seu próprio cluster, tornando visível tanto o nível distinto de demanda entre os grupos quanto a elasticidade compartilhada escolhida.
+
 Três limites acompanham a decisão:
 
 - A elasticidade possui incerteza material: OLS e Huber produzem valores diferentes, ainda que a amostra não prove uma superioridade definitiva entre os dois métodos.
