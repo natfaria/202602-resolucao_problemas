@@ -53,6 +53,8 @@ A fronteira entre FDS e Sexta recebe um teste específico. Forçar FDS e Sexta a
 
 As métricas do holdout exploratório produzem uma tensão que precisa ser registrada. Juntar FDS a Sexta reduz marginalmente RMSE e WMAPE nesse período, mas não há FDS entre os 10 dias e há apenas uma Sexta. A melhora pode decorrer do deslocamento do coeficiente de Sexta usado nessa única previsão, não de uma estrutura superior. BIC e teste F respondem diretamente à questão estrutural com toda a amostra de treino; por isso, FDS permanece como intercepto próprio. A previsão de FDS continua sem validação externa e deve ser usada com cautela se sábado e domingo fizerem parte do horizonte de decisão.
 
+Na sensibilidade da inclinação, retirar FDS desloca a elasticidade para valores mais negativos em média: a diferença estimada é −2,294, com intervalo bootstrap de 95% entre −5,204 e 0,388. O intervalo ainda contém zero, mas está predominantemente no sentido negativo. Portanto, não há evidência suficiente para atribuir uma elasticidade exclusiva ao FDS; há, porém, uma sensibilidade relevante da elasticidade compartilhada à presença desse grupo.
+
 ## Elasticidade compartilhada ou elasticidades por cluster?
 
 Com os quatro interceptos definidos, são comparadas duas hipóteses:
@@ -96,7 +98,7 @@ OLS atribui peso quadrático aos resíduos: um erro duas vezes maior pesa quatro
 
 Como checagem de robustez, Huber estima elasticidade de aproximadamente \(-14,10\), contra \(-12,46\) do OLS: deslocamento de cerca de 13%. Esse resultado é material e confirma que a escolha do estimador é uma fonte de incerteza metodológica. Ele não motiva remover dados, nem substitui automaticamente o modelo principal.
 
-O bootstrap da diferença OLS–Huber inclui zero. Além disso, a validação temporal interna que favorece Huber foi definida depois de explorações anteriores e não possui confirmação em um novo holdout externo. Por essas razões, a evidência sustenta Huber como checagem obrigatória de robustez, mas não como base suficiente para substituir OLS como especificação principal.
+O bootstrap da diferença OLS–Huber inclui zero. Além disso, a validação temporal interna que favorece Huber foi definida depois de explorações anteriores e avalia 09/10 a 31/10, período que contém integralmente o episódio mais volátil observado. Ela funciona como teste de estresse tardio e tende a favorecer métodos que reduzem o peso de resíduos grandes; não possui confirmação em um novo holdout externo. Por essas razões, a evidência sustenta Huber como checagem obrigatória de robustez, mas não como base suficiente para substituir OLS como especificação principal.
 
 ## Modelo final e limites de uso
 
@@ -119,4 +121,4 @@ Três limites acompanham a decisão:
 - FDS possui nível próprio bem identificado no treino, mas não possui observações no período exploratório separado; sua previsão fora da amostra permanece incerta.
 - A referência de erro fora da amostra já foi consultada durante a exploração. Uma avaliação final independente requer novos dados futuros.
 
-O apêndice técnico do notebook documenta validação temporal expansiva, LOO, bootstrap estratificado e sensibilidade do fator de smearing por cluster. Essas análises sustentam a cautela dos limites acima, sem alterar a decisão principal do relatório.
+O apêndice técnico do notebook documenta o teste de estresse temporal expansivo, LOO, bootstrap estratificado e sensibilidade do fator de smearing por cluster. Essas análises sustentam a cautela dos limites acima, sem alterar a decisão principal do relatório.
