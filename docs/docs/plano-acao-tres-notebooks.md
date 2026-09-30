@@ -42,9 +42,9 @@ ser documentado como aproximação do preço efetivamente oferecido.
 - A seleção de modelos deve usar janelas temporais expansivas dentro desse período.
 - O holdout só deve ser executado depois que fórmula, variáveis, métricas e critérios de escolha
   estiverem congelados.
-- Como o holdout já foi consultado em análises anteriores do projeto, ele deve ser reportado com
-  transparência como avaliação oficial retrospectiva, e não como evidência externa totalmente
-  independente. Uma validação externa genuína exigirá dados futuros ainda não observados.
+- Com a amostra disponível, o holdout é uma avaliação final interna ao material fornecido, não uma
+  validação externa independente. Uma validação externa genuína exigirá dados futuros ainda não
+  observados.
 
 ### 2.4 Parcimônia compatível com a amostra
 
@@ -65,6 +65,23 @@ Cada previsão e cada preço recomendado devem respeitar a faixa de preços obse
 correspondente. O otimizador não deve explorar regiões nas quais a curva não possui suporte
 empírico.
 
+### 2.7 Independência narrativa e protocolo de explicação
+
+- Cada notebook deve ser construído a partir da fonte bruta, do enunciado do desafio e das
+  referências bibliográficas listadas neste plano.
+- Resultados, conclusões, escolhas de variáveis, testes e figuras de notebooks ou tentativas
+  anteriores não podem ser usados como evidência nem mencionados na narrativa. Os notebooks antigos
+  servem apenas como arquivo histórico e não são fonte metodológica.
+- Antes de cada teste, tabela ou gráfico, uma célula Markdown deve declarar a pergunta respondida,
+  justificar por que a análise é adequada e registrar suas principais limitações ou hipóteses.
+- Depois de cada resultado, outra célula Markdown deve interpretar os valores efetivamente
+  produzidos, separar associação de causalidade e explicar a consequência para a próxima etapa.
+- Justificativas e interpretações devem permanecer em Markdown, não escondidas em comentários ou
+  mensagens de código. Após cada execução integral, o texto deve ser conferido contra os resultados
+  atualizados.
+- Somente referências bibliográficas e o enunciado do desafio podem fundamentar escolhas
+  metodológicas; nenhuma referência cruzada a testes anteriores deve aparecer no documento final.
+
 ## 3. Organização proposta no Cookiecutter Data Science
 
 ### 3.1 Notebooks
@@ -75,8 +92,9 @@ empírico.
 | 2 | `notebooks/2.0-minerva-curva-demanda-validacao.ipynb` | Seleção, estimação, diagnóstico e congelamento da curva |
 | 3 | `notebooks/3.0-minerva-otimizacao-precos.ipynb` | Formulação matemática, solução, cenários e análise das restrições |
 
-Os notebooks antigos permanecem em `notebooks/antigos/` apenas como histórico. Eles não devem ser
-importados nem funcionar como dependência dos novos notebooks.
+Os notebooks antigos permanecem em `notebooks/antigos/` apenas como arquivo histórico. Eles não
+devem ser importados, funcionar como dependência ou fornecer resultados e conclusões aos novos
+notebooks.
 
 ### 3.2 Dados e artefatos
 
@@ -105,15 +123,17 @@ reports/figures/
     03_*.png                                    # resultados e sensibilidades da otimização
 ```
 
-### 3.3 Código reutilizável em `src/`
+### 3.3 Evolução do código exploratório para `src/`
 
-O notebook deve narrar e chamar funções; regras de negócio e cálculos reutilizáveis não devem ficar
-copiados entre células.
+O Notebook 1 é uma análise exploratória autocontida: leitura, auditoria e criação inicial de
+variáveis permanecem visíveis nas células, facilitando a revisão das hipóteses. A promoção para
+`src/` acontece apenas quando uma transformação ou regra estiver estabilizada e precisar ser
+reutilizada pela modelagem, previsão ou otimização.
 
 | Módulo | Evolução planejada |
 |---|---|
-| `src/dataset.py` | Leitura da planilha, validação do esquema, limpeza e separação temporal |
-| `src/features.py` | Criação determinística de preço, custo unitário, logs e calendário |
+| `src/dataset.py` | Futuramente, leitura e validação estabilizadas para execução reproduzível |
+| `src/features.py` | Futuramente, variáveis aprovadas para modelagem e inferência |
 | `src/modeling/train.py` | Janelas expansivas, ajuste dos candidatos e tabela de comparação |
 | `src/modeling/demand_curve.py` | Especificações candidatas, ajuste final, smearing, suporte e artefato JSON |
 | `src/modeling/predict.py` | Previsões centrais, cenários e validação de suporte |
@@ -157,7 +177,8 @@ justificado de modelos candidatos. Ele não escolhe a curva final.
 
 ### 4.4 Variáveis derivadas canônicas
 
-Criar em `src/features.py` e documentar no notebook:
+Criar diretamente no Notebook 1 e documentar em Markdown. A promoção para `src/features.py` só
+ocorre depois que uma transformação for aprovada para reutilização:
 
 | Variável | Fórmula ou origem | Uso |
 |---|---|---|
@@ -566,12 +587,13 @@ Notebook 3: otimização matemática
 
 ## 8. Ordem de implementação
 
-### Etapa 1: fundação dos dados
+### Etapa 1: exploração e contrato dos dados
 
-1. Implementar leitura e validação em `src/dataset.py`.
-2. Implementar variáveis em `src/features.py`.
-3. Criar testes unitários para preço, custo, calendário e separação temporal.
-4. Construir e revisar o Notebook 1.
+1. Construir o Notebook 1 de forma autocontida, com leitura, auditoria e variáveis visíveis.
+2. Revisar a sazonalidade, o suporte e as hipóteses candidatas.
+3. Persistir os conjuntos e catálogos necessários para a etapa seguinte.
+4. Somente depois da revisão, promover para `src/` as transformações que o Notebook 2 precisará
+   reproduzir em treino e inferência.
 
 ### Etapa 2: protocolo estatístico
 
