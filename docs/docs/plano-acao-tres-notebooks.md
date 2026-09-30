@@ -300,26 +300,94 @@ produz um artefato que o otimizador pode consumir sem depender do notebook.
 5. Recalcular dentro de cada janela toda estatística dependente do treino, inclusive smearing,
    médias, limites e transformações ajustadas.
 6. Registrar previsão, erro, data, dia da semana, preço e versão do candidato para cada origem.
-7. Calcular métricas globais e por semana; não escolher pelo melhor dia isolado.
+7. Calcular, para todos os candidatos e exatamente sobre as mesmas previsões, `WMAPE`, `MAE`,
+   `RMSE`, erro absoluto mediano, `sMAPE`, `RMSLE`, viés em kg e viés percentual.
+8. Calcular também WMAPE semanal, erro absoluto do volume semanal e erro percentual do volume
+   acumulado. O MAPE convencional pode ser exibido apenas como diagnóstico, com alerta explícito de
+   instabilidade quando o volume observado estiver próximo de zero.
+9. Manter WMAPE como métrica primária por refletir o erro total em kg sem dividir cada observação por
+   volumes muito baixos. RMSE mede a penalização dos grandes erros; MAE e erro mediano mostram o erro
+   típico; viés identifica subestimação ou superestimação sistemática. Nenhuma métrica poderá ser
+   escolhida depois de conhecidos os resultados.
+10. Estimar a incerteza das métricas por reamostragem em blocos semanais quando a quantidade de
+    semanas permitir. Não escolher pelo melhor dia, semana ou métrica isolada.
 
-### 5.3 Seleção champion-challenger
+### 5.3 Construção incremental e seleção champion-challenger
 
-Executar em duas rodadas para evitar uma combinação excessiva de alternativas:
+Toda justificativa deve ser refeita no próprio Notebook 2 usando apenas o conjunto de
+desenvolvimento. Resultados, p-valores, agrupamentos ou conclusões obtidos em notebooks anteriores
+não podem ser importados, citados ou tratados como evidência.
 
-1. **Rodada de calendário:** comparar `P0`, `P1`, `P2` e `P3` com a mesma forma de potência e
-   elasticidade compartilhada.
-   Incluir também uma segunda partição agrupada que separe segunda-feira de terça a quinta. As duas
-   distinções de calendário devem ser reestimadas pelo mesmo protocolo, sem herdar resultados ou
+#### 5.3.1 Justificativa inferencial dos agrupamentos
+
+Antes de comparar as partições simplificadas, ajustar um modelo saturado de dia da semana,
+controlando por preço, para verificar quais diferenças de nível são sustentadas pela amostra atual.
+
+1. Estimar coeficientes, intervalos de confiança e p-valores com covariância robusta HC3.
+2. Definir antes dos resultados os contrastes de interesse: sábado versus domingo; terça versus
+   quarta versus quinta; segunda versus terça–quinta; sexta versus os demais dias úteis.
+3. Aplicar testes de Wald robustos aos contrastes individuais e conjuntos, reportando p-valores
+   brutos e corrigidos pelo método de Holm para multiplicidade.
+4. Reportar também tamanho do efeito na escala de volume, intervalo de confiança e número de
+   observações por dia. P-valor sem tamanho de efeito não justifica uma decisão operacional.
+5. Não interpretar p-valor alto como prova de igualdade. Um agrupamento somente poderá ser descrito
+   como equivalência se uma margem prática tiver sido definida antes do teste e o intervalo estiver
+   contido nessa margem. Sem margem operacional disponível, o agrupamento deve ser justificado por
+   parcimônia e validação temporal, não por uma alegação de igualdade estatística.
+6. Usar esses resultados apenas para formular candidatos. A promoção do agrupamento continua
+   dependendo de desempenho fora da amostra interna e estabilidade.
+
+#### 5.3.2 Sequência incremental de variáveis
+
+Construir modelos aninhados, preservando a mesma forma de potência e elasticidade compartilhada:
+
+1. **`P0` — preço:** `ln(volume) ~ ln(preço)`.
+2. **`P1` — fim de semana:** adicionar o indicador de fim de semana.
+3. **`P3` — sexta-feira:** adicionar uma distinção para sexta, mantendo segunda a quinta agrupadas.
+4. **`P4` — segunda-feira:** adicionar uma distinção para segunda, usando terça a quinta como nível
+   agrupado.
+5. **`P2` — calendário saturado:** liberar os níveis individuais de dia da semana como desafio de
+   maior complexidade.
+6. **`T1` — tendência:** adicionar `indice_tempo` ao melhor calendário somente depois da rodada de
+   agrupamento.
+
+Produzir uma tabela incremental única com, no mínimo:
+
+- código, fórmula e bloco de variáveis acrescentado;
+- número de parâmetros e observações;
+- coeficiente de preço, sinal, intervalo HC3 e p-valor;
+- p-valor Wald HC3 do bloco acrescentado, bruto e ajustado quando aplicável;
+- R² ajustado e BIC como diagnósticos dentro de modelos com a mesma variável resposta;
+- WMAPE, MAE, RMSE, erro absoluto mediano, sMAPE, RMSLE, viés em kg e viés percentual;
+- WMAPE semanal, erro absoluto semanal e erro percentual do volume acumulado;
+- variação de cada métrica em relação ao modelo imediatamente anterior;
+- previsão mínima, estabilidade do sinal de preço e validade operacional.
+
+BIC não deve ser comparado diretamente entre modelos com variáveis resposta em escalas diferentes.
+R², R² ajustado e p-valores são diagnósticos do ajuste; a decisão preditiva deve priorizar a
+validação temporal.
+
+#### 5.3.3 Rodadas de decisão
+
+Executar as rodadas abaixo para evitar uma combinação excessiva de alternativas:
+
+1. **Rodada de calendário:** comparar `P0`, `P1`, `P2`, `P3` e `P4` com a mesma forma de potência e
+   elasticidade compartilhada. `P3` agrupa segunda a quinta; `P4` separa segunda de terça a quinta.
+   Todas as distinções devem ser reestimadas pelo mesmo protocolo, sem herdar resultados ou
    parâmetros já calculados.
 2. **Rodada de forma funcional:** usando a estrutura de calendário vencedora, comparar potência,
    exponencial e linear.
-3. **Rodada opcional de tendência:** desafiar o campeão com `indice_tempo` apenas se a EDA tiver
-   mostrado mudança persistente e a variável melhorar a validação temporal.
+3. **Rodada opcional de tendência:** desafiar o campeão com `indice_tempo` somente após uma
+   visualização cronológica construída no próprio Notebook 2 e manter a variável apenas se ela
+   melhorar a validação temporal.
 
 Regras de decisão:
 
-- o challenger deve melhorar a métrica primária de maneira consistente, não apenas em um ponto;
+- o challenger deve melhorar WMAPE e apresentar comportamento coerente nas métricas secundárias,
+  não apenas vencer em um ponto ou em uma métrica escolhida posteriormente;
 - se a diferença for pequena, manter o modelo com menos parâmetros;
+- p-valores e testes de bloco podem apoiar a interpretação, mas não substituem validação temporal,
+  tamanho de efeito, estabilidade e plausibilidade econômica;
 - rejeitar modelos com comportamento operacional inválido, como volumes negativos;
 - não promover interações `preço × calendário` com a amostra atual, salvo evidência excepcional e
   explicitamente documentada;
@@ -372,7 +440,8 @@ otimização.
 1. Confirmar que o artefato do campeão já foi salvo.
 2. Carregar `minerva_holdout.csv` pela primeira vez no novo fluxo.
 3. Gerar previsões sem reestimar parâmetros ou smearing.
-4. Calcular WMAPE, RMSE, viés e erro de volume semanal.
+4. Calcular o mesmo painel congelado da validação interna: WMAPE, MAE, RMSE, erro absoluto mediano,
+   sMAPE, RMSLE, viés em kg e percentual, WMAPE semanal e erro do volume acumulado.
 5. Verificar se todos os preços do holdout pertencem ao suporte do treino.
 6. Registrar que o período não contém FDS e, portanto, não valida essa parte da curva.
 7. Não alterar o modelo com base no resultado. Qualquer alteração posterior transforma o holdout em
@@ -398,6 +467,10 @@ de volume.
 ### 5.9 Entregáveis do Notebook 2
 
 - Ranking auditável dos candidatos.
+- Tabela incremental com variáveis adicionadas, p-valores robustos dos blocos, tamanhos de efeito,
+  métricas de erro e variações contra o modelo anterior.
+- Tabela de contrastes de calendário com correção de Holm e interpretação que não confunda ausência
+  de significância com equivalência.
 - Curva campeã e sua interpretação econômica.
 - Previsões temporais internas e do holdout.
 - Diagnósticos de resíduos, influência e robustez.
@@ -407,9 +480,11 @@ de volume.
 
 ### 5.10 Critério de conclusão
 
-O Notebook 2 está concluído quando `predict_volume(preço, contexto)` pode ser executada a partir do
-artefato salvo, reproduz as previsões documentadas, bloqueia extrapolações e fornece cenários de
-incerteza sem reabrir a seleção do modelo.
+O Notebook 2 está concluído quando os agrupamentos estão justificados por contrastes refeitos no
+próprio documento, a tabela incremental apresenta todas as métricas congeladas e
+`predict_volume(preço, contexto)` pode ser executada a partir do artefato salvo, reproduz as
+previsões documentadas, bloqueia extrapolações e fornece cenários de incerteza sem reabrir a seleção
+do modelo.
 
 ## 6. Notebook 3: otimização matemática de preços
 
