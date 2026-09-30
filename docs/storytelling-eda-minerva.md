@@ -243,3 +243,15 @@ Ele não permite concluir que:
 - Enunciado do desafio: `docs/referencias/Minerva_Unifesp_ITA.pdf`.
 - PHILLIPS, Robert L. *Pricing and Revenue Optimization*. 2. ed.
 - MULLAPUDI, Pavan Nithin. *Pricing Optimization across Domains*.
+
+## Resumo Alto Nível
+- A base é utilizável: não há dados ausentes, duplicados ou valores inválidos nas 76 observações de desenvolvimento.
+- Existe variação de preço suficiente, mas as conclusões valem apenas para a faixa observada de aproximadamente R$ 1.189 a R$ 1.365/kg.
+- Preço e volume apresentam associação negativa nos dias úteis: preços maiores geralmente aparecem acompanhados de volumes menores.
+- Dia da semana é a principal variável contextual: mesmo controlando exploratoriamente pelo preço, apresentou forte ganho de ajuste.
+- Mês, quinzena e semana do mês não mostraram contribuição clara depois do controle pelo preço.
+- Fim de semana possui poucos dados: são apenas cinco sábados e cinco domingos, insuficientes para estimar elasticidades específicas com segurança.
+- Preço, calendário e tempo estão parcialmente confundidos: especialmente em outubro, quando preços baixos coincidem com volumes elevados.
+- Os pontos extremos não devem ser removidos automaticamente: vários pertencem a um episódio temporal coerente de outubro.
+- A interpretação não é causal: faltam informações como estoque, promoções, concorrência, clima e preço de lista.
+- Nenhum modelo foi escolhido no EDA: a hipótese inicial mais defensável é uma elasticidade compartilhada, com diferentes níveis de demanda por contexto de calendário, a ser validada temporalmente no Notebook 2.
