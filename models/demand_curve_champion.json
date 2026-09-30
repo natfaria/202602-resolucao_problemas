@@ -1,0 +1,147 @@
+{
+  "artifact_version": 2,
+  "calendar": {
+    "baseline": "Segunda_a_Quinta",
+    "contexts": [
+      "Segunda_a_Quinta",
+      "Sexta",
+      "Fim_de_semana"
+    ],
+    "mapping": {
+      "Domingo": "Fim_de_semana",
+      "Quarta": "Segunda_a_Quinta",
+      "Quinta": "Segunda_a_Quinta",
+      "Segunda": "Segunda_a_Quinta",
+      "Sexta": "Sexta",
+      "Sábado": "Fim_de_semana",
+      "Terça": "Segunda_a_Quinta"
+    },
+    "source_variable": "dia_semana"
+  },
+  "coefficients": {
+    "const": 91.59146121459447,
+    "contexto_Fim_de_semana": -2.9670084419251888,
+    "contexto_Sexta": -1.3394398892280646,
+    "ln_preco": -12.364695401293016
+  },
+  "diagnostics": {
+    "breusch_pagan_p_value": 0.01749081857772587,
+    "durbin_watson": 1.8281816379561113,
+    "leave_one_out_elasticity_max": -11.198542167710803,
+    "leave_one_out_elasticity_min": -14.099389290446455,
+    "ljung_box_p_value_lag_5": 0.9428361538791248
+  },
+  "family": "power",
+  "feature_order": [
+    "const",
+    "ln_preco",
+    "contexto_Sexta",
+    "contexto_Fim_de_semana"
+  ],
+  "formula": "ln(volume_kg) ~ ln(preco_kg) + I(sexta) + I(fim_de_semana)",
+  "holdout_evaluation": {
+    "contains_weekend": false,
+    "end": "2025-11-14",
+    "frozen_model_core_sha256": "761745984255a92f0745b74dabf6f228072650ee4bc89faf1f398bf3a371d5c5",
+    "metrics": {
+      "RMSE": 8.526306144497806,
+      "Viés (%)": -0.1620519734988038,
+      "Viés (kg)": -29.757366128253622,
+      "WMAPE": 0.36278870166893723,
+      "WMAPE semanal": 0.16771316301177897
+    },
+    "predictions_file": "data/processed/minerva_previsoes_holdout.csv",
+    "rows": 10,
+    "start": "2025-11-03"
+  },
+  "inference": {
+    "coefficient_table": [
+      {
+        "IC95_inferior": 53.5456089046,
+        "IC95_superior": 129.6373135246,
+        "coeficiente": 91.5914612146,
+        "erro_padrao_HC3": 19.085301054,
+        "p_valor_HC3": 8.387e-06,
+        "variavel": "const"
+      },
+      {
+        "IC95_inferior": -17.6863663297,
+        "IC95_superior": -7.0430244729,
+        "coeficiente": -12.3646954013,
+        "erro_padrao_HC3": 2.6695601652,
+        "p_valor_HC3": 1.57053e-05,
+        "variavel": "ln_preco"
+      },
+      {
+        "IC95_inferior": -1.6401154034,
+        "IC95_superior": -1.0387643751,
+        "coeficiente": -1.3394398892,
+        "erro_padrao_HC3": 0.1508307045,
+        "p_valor_HC3": 0.0,
+        "variavel": "contexto_Sexta"
+      },
+      {
+        "IC95_inferior": -3.5615448481,
+        "IC95_superior": -2.3724720358,
+        "coeficiente": -2.9670084419,
+        "erro_padrao_HC3": 0.2982429256,
+        "p_valor_HC3": 0.0,
+        "variavel": "contexto_Fim_de_semana"
+      }
+    ],
+    "covariance": "HC3"
+  },
+  "model_core_sha256": "761745984255a92f0745b74dabf6f228072650ee4bc89faf1f398bf3a371d5c5",
+  "model_id": "P3-power-grouped-calendar-v1",
+  "observational_warning": "Curva preditiva observacional; preço pode refletir demanda antecipada e variáveis omitidas. Não interpretar como efeito causal identificado.",
+  "price_support": {
+    "Fim_de_semana": {
+      "max": 1354.1870996276002,
+      "min": 1188.863745689,
+      "n": 10
+    },
+    "Segunda_a_Quinta": {
+      "max": 1352.4231544551155,
+      "min": 1201.6316634282,
+      "n": 52
+    },
+    "Sexta": {
+      "max": 1365.4912605806614,
+      "min": 1208.368389539517,
+      "n": 14
+    }
+  },
+  "runtime": {
+    "numpy": "2.5.2",
+    "pandas": "3.0.5",
+    "prediction_module": "src/modeling/demand_curve.py",
+    "prediction_module_sha256": "7fcf0d93785cb8b76aed1848714c2a06fa8eedf70ec0e442f0945d4b278a177e",
+    "python": "3.13.15",
+    "statsmodels": "0.14.6"
+  },
+  "selection": {
+    "initial_training_rows": 55,
+    "method": "expanding_window_one_step_ahead",
+    "metrics": {
+      "Folds com inclinação não negativa": 0.0,
+      "Parâmetros": 4.0,
+      "Previsão mínima": 0.618900308350271,
+      "RMSE": 15.387138035712232,
+      "Viés (%)": -0.21058208552904326,
+      "Viés (kg)": -110.83109712879651,
+      "WMAPE": 0.35290966201306667,
+      "WMAPE semanal": 0.3031817386366427
+    },
+    "validation_end": "2025-10-31",
+    "validation_rows": 21,
+    "validation_start": "2025-10-09"
+  },
+  "smearing_factor": 1.1225968758916314,
+  "training": {
+    "data_file": "minerva_modelagem_treino.csv",
+    "data_sha256": "ed5fb2cba0b14c38317d2e2a44d830843c95b0bb5911f6ec30da7997520e9b1c",
+    "end": "2025-10-31",
+    "rows": 76,
+    "start": "2025-08-01"
+  }
+}

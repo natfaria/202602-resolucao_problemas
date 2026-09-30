@@ -1,166 +1,35 @@
-"""Curva final de demanda preço-volume.
-
-Especificação definida no EDA:
-
-``ln(volume) = intercepto_do_cluster + beta * ln(preço) + erro``
-
-O modelo usa OLS, quatro interceptos de nível e uma elasticidade compartilhada.
-As previsões retornam em quilogramas com correção global de smearing de Duan.
-"""
+"""Inferência da curva de demanda congelada pelo Notebook 2."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import hashlib
 import json
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import numpy as np
-import pandas as pd
-import statsmodels.api as sm
-from statsmodels.regression.linear_model import RegressionResultsWrapper
+
+Artifact = Mapping[str, Any]
 
 
-CLUSTER_BASE = "TerQuaQui"
-CLUSTERS = ("Segunda", "TerQuaQui", "Sexta", "FimDeSemana")
-COLUNAS_MODELO = ("const", "ln_preco", "Segunda", "Sexta", "FimDeSemana")
+def load_artifact(path: str | Path) -> dict[str, Any]:
+    """Carrega um artefato JSON sem desserializar código executável."""
+    return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
-def assign_cluster(dia_da_semana: str) -> str:
-    """Mapeia o dia da semana para o cluster de nível selecionado no EDA."""
-    if dia_da_semana == "Segunda":
-        return "Segunda"
-    if dia_da_semana in ("Terça", "Quarta", "Quinta"):
-        return "TerQuaQui"
-    if dia_da_semana == "Sexta":
-        return "Sexta"
-    if dia_da_semana in ("Sábado", "Domingo"):
-        return "FimDeSemana"
-    raise ValueError(f"Dia da semana não reconhecido: {dia_da_semana!r}")
+def save_artifact(artifact: Artifact, path: str | Path) -> None:
+    """Salva o artefato em JSON legível e determinístico."""
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(dict(artifact), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
-@dataclass(frozen=True)
-class DemandCurveModel:
-    """Artefato necessário para prever volume em kg de forma reproduzível."""
-
-    regression: RegressionResultsWrapper
-    smearing_factor: float
-    price_support: Mapping[str, tuple[float, float]]
-
-    @property
-    def params(self) -> pd.Series:
-        """Coeficientes OLS, expostos para inspeção no notebook e relatórios."""
-        return self.regression.params
-
-    @property
-    def pvalues(self) -> pd.Series:
-        """p-valores OLS dos coeficientes estimados."""
-        return self.regression.pvalues
-
-
-@dataclass(frozen=True)
-class DemandCurveArtifact:
-    """Representação JSON, auditável e independente de pickle do modelo final."""
-
-    params: Mapping[str, float]
-    smearing_factor: float
-    price_support: Mapping[str, tuple[float, float]]
-    metadata: Mapping[str, Any]
-
-
-def _validate_training_data(df: pd.DataFrame) -> None:
-    required = {"Preço", "Volume Realizado (kg)"}
-    missing = required - set(df.columns)
-    if missing:
-        raise ValueError(f"Dados de treino sem as colunas obrigatórias: {sorted(missing)}")
-    if "Cluster" not in df.columns and "Dia da Semana" not in df.columns:
-        raise ValueError("Informe a coluna 'Cluster' ou 'Dia da Semana'.")
-    if (df["Preço"] <= 0).any() or (df["Volume Realizado (kg)"] <= 0).any():
-        raise ValueError("Preço e volume precisam ser estritamente positivos para a transformação logarítmica.")
-
-
-def _with_cluster(df: pd.DataFrame) -> pd.DataFrame:
-    result = df.copy()
-    if "Cluster" not in result.columns:
-        result["Cluster"] = result["Dia da Semana"].map(assign_cluster)
-    invalid = set(result["Cluster"].dropna().unique()) - set(CLUSTERS)
-    if invalid:
-        raise ValueError(f"Clusters não reconhecidos: {sorted(invalid)}")
-    if result["Cluster"].isna().any():
-        raise ValueError("Há observações sem cluster.")
-    return result
-
-
-def _design_matrix(df: pd.DataFrame) -> pd.DataFrame:
-    """Cria uma matriz fixa, com TerQuaQui como categoria de referência."""
-    dummies = pd.get_dummies(df["Cluster"], dtype=float).drop(columns=CLUSTER_BASE, errors="ignore")
-    X = pd.concat([np.log(df["Preço"]).rename("ln_preco"), dummies], axis=1)
-    X = sm.add_constant(X, has_constant="add")
-    return X.reindex(columns=COLUNAS_MODELO, fill_value=0.0)
-
-
-def fit_demand_curve(df: pd.DataFrame) -> DemandCurveModel:
-    """Ajusta a curva OLS final e estima o fator global de smearing.
-
-    O ajuste deve receber somente o conjunto de treino disponível naquele
-    momento. Nenhum ponto é removido ou limitado antes da regressão.
-    """
-    _validate_training_data(df)
-    training = _with_cluster(df)
-    X = _design_matrix(training)
-    y = np.log(training["Volume Realizado (kg)"])
-    regression = sm.OLS(y, X).fit()
-    smearing_factor = float(np.exp(regression.resid).mean())
-    price_support = {
-        cluster: (float(group["Preço"].min()), float(group["Preço"].max()))
-        for cluster, group in training.groupby("Cluster", observed=True)
-    }
-    return DemandCurveModel(regression, smearing_factor, price_support)
-
-
-def _validate_prediction_inputs(model: DemandCurveModel, preco: float, cluster: str) -> None:
-    if preco <= 0:
-        raise ValueError("Preço precisa ser estritamente positivo.")
-    if cluster not in CLUSTERS:
-        raise ValueError(f"Cluster não reconhecido: {cluster!r}")
-    if cluster not in model.price_support:
-        raise ValueError(f"O modelo não foi treinado com observações do cluster {cluster!r}.")
-
-
-def is_within_price_support(model: DemandCurveModel, preco: float, cluster: str) -> bool:
-    """Informa se o preço pertence ao intervalo observado no cluster."""
-    _validate_prediction_inputs(model, preco, cluster)
-    lower, upper = model.price_support[cluster]
-    return lower <= preco <= upper
-
-
-def predict_volume(
-    model: DemandCurveModel,
-    preco: float,
-    cluster: str,
-    *,
-    allow_extrapolation: bool = False,
-) -> float:
-    """Prevê volume médio em kg com a correção global de smearing.
-
-    Por padrão, bloqueia extrapolações, pois o EDA não validou a curva fora da
-    faixa de preço observada no respectivo cluster.
-    """
-    _validate_prediction_inputs(model, preco, cluster)
-    if not allow_extrapolation and not is_within_price_support(model, preco, cluster):
-        lower, upper = model.price_support[cluster]
-        raise ValueError(
-            f"Preço {preco:.2f} fora do suporte observado para {cluster}: "
-            f"[{lower:.2f}, {upper:.2f}]."
-        )
-    row = pd.DataFrame({"Preço": [preco], "Cluster": [cluster]})
-    prediction_log = float(model.regression.predict(_design_matrix(row)).iloc[0])
-    return float(np.exp(prediction_log) * model.smearing_factor)
-
-
-def data_sha256(path: str | Path) -> str:
-    """Calcula o hash SHA-256 da base exata usada no ajuste."""
+def file_sha256(path: str | Path) -> str:
+    """Calcula o SHA-256 de um arquivo."""
     digest = hashlib.sha256()
     with Path(path).open("rb") as file:
         for chunk in iter(lambda: file.read(1024 * 1024), b""):
@@ -168,76 +37,121 @@ def data_sha256(path: str | Path) -> str:
     return digest.hexdigest()
 
 
-def build_artifact(
-    model: DemandCurveModel,
-    training_data_path: str | Path,
-    training_data: pd.DataFrame,
-    *,
-    code_version: str = "ols-4-intercepts-shared-elasticity-smearing-v1",
-) -> DemandCurveArtifact:
-    """Cria um artefato que permite auditar a origem exata da curva."""
-    dates = pd.to_datetime(training_data["Data"])
-    metadata = {
-        "artifact_version": 1,
-        "model_specification": "OLS ln(volume) ~ ln(price) + Segunda + Sexta + FimDeSemana",
-        "code_version": code_version,
-        "training_rows": int(len(training_data)),
-        "training_period": {"start": dates.min().date().isoformat(), "end": dates.max().date().isoformat()},
-        "training_data_file": Path(training_data_path).name,
-        "training_data_sha256": data_sha256(training_data_path),
-        "demand_curve_module_sha256": data_sha256(Path(__file__)),
-        "python_pandas_version": pd.__version__,
-        "statsmodels_version": sm.__version__,
+def model_core(artifact: Artifact) -> dict[str, Any]:
+    """Seleciona os campos que determinam as previsões da curva."""
+    return {
+        "artifact_version": artifact["artifact_version"],
+        "model_id": artifact["model_id"],
+        "family": artifact["family"],
+        "calendar": artifact["calendar"],
+        "feature_order": artifact["feature_order"],
+        "coefficients": artifact["coefficients"],
+        "smearing_factor": artifact["smearing_factor"],
+        "price_support": artifact["price_support"],
     }
-    return DemandCurveArtifact(
-        params={key: float(value) for key, value in model.params.items()},
-        smearing_factor=float(model.smearing_factor),
-        price_support={key: (float(lower), float(upper)) for key, (lower, upper) in model.price_support.items()},
-        metadata=metadata,
-    )
 
 
-def save_artifact(artifact: DemandCurveArtifact, path: str | Path) -> None:
-    """Persiste o artefato em JSON legível e determinístico."""
-    payload = {
-        "params": dict(artifact.params),
-        "smearing_factor": artifact.smearing_factor,
-        "price_support": {key: list(value) for key, value in artifact.price_support.items()},
-        "metadata": dict(artifact.metadata),
+def model_core_sha256(artifact: Artifact) -> str:
+    """Calcula um hash estável dos campos que controlam a previsão."""
+    serialized = json.dumps(
+        model_core(artifact),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(serialized).hexdigest()
+
+
+def validate_artifact(artifact: Artifact) -> None:
+    """Valida a estrutura mínima e a integridade do núcleo preditivo."""
+    required = {
+        "artifact_version",
+        "model_id",
+        "family",
+        "calendar",
+        "feature_order",
+        "coefficients",
+        "smearing_factor",
+        "price_support",
     }
-    output = Path(path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    missing = required - set(artifact)
+    if missing:
+        raise ValueError(f"Artefato sem campos obrigatórios: {sorted(missing)}")
+    if artifact["family"] not in {"power", "exponential", "linear"}:
+        raise ValueError(f"Família não suportada: {artifact['family']!r}")
+    if set(artifact["feature_order"]) != set(artifact["coefficients"]):
+        raise ValueError("Coeficientes e ordem de variáveis são incompatíveis.")
+    expected_hash = artifact.get("model_core_sha256")
+    if expected_hash and expected_hash != model_core_sha256(artifact):
+        raise ValueError("O núcleo preditivo do artefato não corresponde ao hash registrado.")
 
 
-def load_artifact(path: str | Path) -> DemandCurveArtifact:
-    """Carrega o artefato JSON sem desserializar código executável."""
-    payload = json.loads(Path(path).read_text(encoding="utf-8"))
-    return DemandCurveArtifact(
-        params={key: float(value) for key, value in payload["params"].items()},
-        smearing_factor=float(payload["smearing_factor"]),
-        price_support={key: (float(value[0]), float(value[1])) for key, value in payload["price_support"].items()},
-        metadata=payload["metadata"],
-    )
+def context_for_weekday(artifact: Artifact, weekday: str) -> str:
+    """Transforma o dia da semana no contexto congelado no artefato."""
+    mapping = artifact["calendar"]["mapping"]
+    if weekday not in mapping:
+        raise ValueError(f"Dia da semana não reconhecido: {weekday!r}")
+    return str(mapping[weekday])
+
+
+def _scenario_multiplier(scenario: str, uncertainty: Artifact | None) -> float:
+    if scenario == "central":
+        return 1.0
+    if uncertainty is None:
+        raise ValueError("Cenários não centrais exigem o artefato de incerteza.")
+    multipliers = uncertainty["scenario_multipliers"]
+    if scenario not in multipliers:
+        raise ValueError(f"Cenário não reconhecido: {scenario!r}")
+    return float(multipliers[scenario])
 
 
 def predict_volume_from_artifact(
-    artifact: DemandCurveArtifact,
-    preco: float,
-    cluster: str,
+    artifact: Artifact | str | Path,
+    price: float,
+    weekday: str,
     *,
+    scenario: str = "central",
+    uncertainty: Artifact | str | Path | None = None,
     allow_extrapolation: bool = False,
 ) -> float:
-    """Prevê em kg diretamente dos coeficientes persistidos em JSON."""
-    if preco <= 0:
+    """Prevê volume em kg e bloqueia extrapolações por padrão."""
+    artifact_data = load_artifact(artifact) if isinstance(artifact, (str, Path)) else dict(artifact)
+    validate_artifact(artifact_data)
+    uncertainty_data = (
+        load_artifact(uncertainty) if isinstance(uncertainty, (str, Path)) else uncertainty
+    )
+    if price <= 0:
         raise ValueError("Preço precisa ser estritamente positivo.")
-    if cluster not in CLUSTERS or cluster not in artifact.price_support:
-        raise ValueError(f"Cluster não reconhecido ou ausente no artefato: {cluster!r}")
-    lower, upper = artifact.price_support[cluster]
-    if not allow_extrapolation and not lower <= preco <= upper:
-        raise ValueError(f"Preço {preco:.2f} fora do suporte observado para {cluster}: [{lower:.2f}, {upper:.2f}].")
-    params = artifact.params
-    prediction_log = params["const"] + params["ln_preco"] * np.log(preco)
-    if cluster != CLUSTER_BASE:
-        prediction_log += params.get(cluster, 0.0)
-    return float(np.exp(prediction_log) * artifact.smearing_factor)
+
+    context = context_for_weekday(artifact_data, weekday)
+    if context not in artifact_data["price_support"]:
+        raise ValueError(f"Contexto ausente no suporte do artefato: {context!r}")
+    support = artifact_data["price_support"][context]
+    lower = float(support["min"])
+    upper = float(support["max"])
+    if not allow_extrapolation and not lower <= price <= upper:
+        raise ValueError(
+            f"Preço {price:.2f} fora do suporte de {context}: [{lower:.2f}, {upper:.2f}]."
+        )
+
+    family = artifact_data["family"]
+    price_feature = np.log(price) if family == "power" else price / 100.0
+    features = {name: 0.0 for name in artifact_data["feature_order"]}
+    features["const"] = 1.0
+    features["ln_preco" if family == "power" else "preco_100"] = float(price_feature)
+    baseline = artifact_data["calendar"]["baseline"]
+    if context != baseline:
+        features[f"contexto_{context}"] = 1.0
+
+    linear_prediction = sum(
+        float(artifact_data["coefficients"][name]) * features[name]
+        for name in artifact_data["feature_order"]
+    )
+    if family in {"power", "exponential"}:
+        prediction = np.exp(linear_prediction) * float(artifact_data["smearing_factor"])
+    else:
+        prediction = linear_prediction
+    prediction *= _scenario_multiplier(scenario, uncertainty_data)
+    if prediction <= 0:
+        raise ValueError("A curva produziu volume não positivo no ponto solicitado.")
+    return float(prediction)

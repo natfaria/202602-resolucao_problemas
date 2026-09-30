@@ -1,0 +1,21 @@
+{
+  "artifact_version": 1,
+  "bootstrap": {
+    "block": "inicio_semana",
+    "elasticity_quantiles": {
+      "q025": -15.984385571937771,
+      "q500": -12.336081865616407,
+      "q975": -6.711935999093363
+    },
+    "replications": 1000,
+    "seed": 42
+  },
+  "model_core_sha256": "761745984255a92f0745b74dabf6f228072650ee4bc89faf1f398bf3a371d5c5",
+  "scenario_multipliers": {
+    "central": 1.0,
+    "conservative": 0.6413120016225725,
+    "optimistic": 1.4978867785735324
+  },
+  "source": "expanding_window_prediction_ratios_and_weekly_block_bootstrap",
+  "warning": "Fim de semana possui somente dez observações de desenvolvimento."
+}

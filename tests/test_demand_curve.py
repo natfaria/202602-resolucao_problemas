@@ -1,58 +1,86 @@
-import pandas as pd
+import copy
+
+import numpy as np
 import pytest
 
 from src.modeling.demand_curve import (
-    assign_cluster,
-    build_artifact,
-    fit_demand_curve,
-    is_within_price_support,
-    load_artifact,
-    predict_volume,
+    context_for_weekday,
+    model_core_sha256,
     predict_volume_from_artifact,
-    save_artifact,
+    validate_artifact,
 )
 
 
-@pytest.fixture(scope="module")
-def fitted_model():
-    training = pd.read_csv("data/interim/.treino.csv")
-    return fit_demand_curve(training)
+@pytest.fixture
+def artifact():
+    payload = {
+        "artifact_version": 2,
+        "model_id": "fixture-power",
+        "family": "power",
+        "calendar": {
+            "baseline": "Dia_util",
+            "mapping": {
+                "Segunda": "Dia_util",
+                "Terça": "Dia_util",
+                "Quarta": "Dia_util",
+                "Quinta": "Dia_util",
+                "Sexta": "Sexta",
+                "Sábado": "Fim_de_semana",
+                "Domingo": "Fim_de_semana",
+            },
+        },
+        "feature_order": [
+            "const",
+            "ln_preco",
+            "contexto_Sexta",
+            "contexto_Fim_de_semana",
+        ],
+        "coefficients": {
+            "const": 10.0,
+            "ln_preco": -1.0,
+            "contexto_Sexta": -0.5,
+            "contexto_Fim_de_semana": -1.0,
+        },
+        "smearing_factor": 1.1,
+        "price_support": {
+            "Dia_util": {"min": 100.0, "max": 200.0, "n": 20},
+            "Sexta": {"min": 100.0, "max": 200.0, "n": 5},
+            "Fim_de_semana": {"min": 100.0, "max": 200.0, "n": 4},
+        },
+    }
+    payload["model_core_sha256"] = model_core_sha256(payload)
+    return payload
 
 
-def test_final_model_reproduces_selected_ols_coefficients(fitted_model):
-    assert fitted_model.params["ln_preco"] == pytest.approx(-12.458103, abs=1e-6)
-    assert fitted_model.params["Segunda"] == pytest.approx(0.338230, abs=1e-6)
-    assert fitted_model.params["Sexta"] == pytest.approx(-1.255048, abs=1e-6)
-    assert fitted_model.params["FimDeSemana"] == pytest.approx(-2.883045, abs=1e-6)
-    assert fitted_model.smearing_factor == pytest.approx(1.117873, abs=1e-6)
+def test_prediction_reproduces_power_equation(artifact):
+    prediction = predict_volume_from_artifact(artifact, 150.0, "Segunda")
+    expected = np.exp(10.0 - np.log(150.0)) * 1.1
+    assert prediction == pytest.approx(expected)
 
 
-def test_prediction_uses_smearing_and_respects_cluster_support(fitted_model):
-    assert is_within_price_support(fitted_model, 1300.0, "TerQuaQui")
-    prediction = predict_volume(fitted_model, 1300.0, "TerQuaQui")
-    assert prediction > 0
-
-    with pytest.raises(ValueError, match="fora do suporte"):
-        predict_volume(fitted_model, 1500.0, "TerQuaQui")
-
-
-def test_test_period_prices_are_inside_their_cluster_support(fitted_model):
-    test = pd.read_csv("data/interim/.teste.csv")
-    for _, row in test.iterrows():
-        cluster = assign_cluster(row["Dia da Semana"])
-        assert is_within_price_support(fitted_model, row["Preço"], cluster)
-
-
-def test_json_artifact_reproduces_the_fitted_prediction(fitted_model, tmp_path):
-    training_path = "data/interim/.treino.csv"
-    training = pd.read_csv(training_path)
-    artifact = build_artifact(fitted_model, training_path, training)
-    artifact_path = tmp_path / "demand_curve_ols.json"
-    save_artifact(artifact, artifact_path)
-    restored = load_artifact(artifact_path)
-
-    assert restored.metadata["training_rows"] == 76
-    assert restored.metadata["training_data_sha256"] == artifact.metadata["training_data_sha256"]
-    assert predict_volume_from_artifact(restored, 1300.0, "TerQuaQui") == pytest.approx(
-        predict_volume(fitted_model, 1300.0, "TerQuaQui")
+def test_context_and_scenario_are_applied(artifact):
+    uncertainty = {
+        "scenario_multipliers": {"conservative": 0.7, "central": 1.0, "optimistic": 1.4}
+    }
+    friday = predict_volume_from_artifact(artifact, 150.0, "Sexta")
+    conservative = predict_volume_from_artifact(
+        artifact,
+        150.0,
+        "Sexta",
+        scenario="conservative",
+        uncertainty=uncertainty,
     )
+    assert context_for_weekday(artifact, "Sábado") == "Fim_de_semana"
+    assert conservative == pytest.approx(friday * 0.7)
+
+
+def test_prediction_blocks_extrapolation(artifact):
+    with pytest.raises(ValueError, match="fora do suporte"):
+        predict_volume_from_artifact(artifact, 250.0, "Segunda")
+
+
+def test_integrity_hash_detects_model_changes(artifact):
+    changed = copy.deepcopy(artifact)
+    changed["coefficients"]["ln_preco"] = -2.0
+    with pytest.raises(ValueError, match="hash registrado"):
+        validate_artifact(changed)

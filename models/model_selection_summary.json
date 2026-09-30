@@ -1,0 +1,169 @@
+{
+  "calendar_round": [
+    {
+      "Código": "P3",
+      "Folds com inclinação não negativa": 0,
+      "Parâmetros": 4,
+      "Previsão mínima": 0.6189003084,
+      "RMSE": 15.3871380357,
+      "Viés (%)": -0.2105820855,
+      "Viés (kg)": -110.8310971288,
+      "Válido": true,
+      "WMAPE": 0.352909662,
+      "WMAPE semanal": 0.3031817386
+    },
+    {
+      "Código": "P4",
+      "Folds com inclinação não negativa": 0,
+      "Parâmetros": 5,
+      "Previsão mínima": 0.6120497898,
+      "RMSE": 16.1404998912,
+      "Viés (%)": -0.204031063,
+      "Viés (kg)": -107.3832396633,
+      "Válido": true,
+      "WMAPE": 0.3815528768,
+      "WMAPE semanal": 0.3204391544
+    },
+    {
+      "Código": "P2",
+      "Folds com inclinação não negativa": 0,
+      "Parâmetros": 8,
+      "Previsão mínima": 0.4366376024,
+      "RMSE": 16.6221405231,
+      "Viés (%)": -0.2041082039,
+      "Viés (kg)": -107.4238395634,
+      "Válido": true,
+      "WMAPE": 0.3941066246,
+      "WMAPE semanal": 0.312191208
+    },
+    {
+      "Código": "P1",
+      "Folds com inclinação não negativa": 0,
+      "Parâmetros": 3,
+      "Previsão mínima": 0.6888355138,
+      "RMSE": 21.1386072248,
+      "Viés (%)": -0.2433270024,
+      "Viés (kg)": -128.0650183177,
+      "Válido": true,
+      "WMAPE": 0.5351018938,
+      "WMAPE semanal": 0.3037803955
+    },
+    {
+      "Código": "P0",
+      "Folds com inclinação não negativa": 0,
+      "Parâmetros": 2,
+      "Previsão mínima": 9.295285745,
+      "RMSE": 26.3763558633,
+      "Viés (%)": -0.152562781,
+      "Viés (kg)": -80.2950562286,
+      "Válido": true,
+      "WMAPE": 0.780021128,
+      "WMAPE semanal": 0.3026320082
+    }
+  ],
+  "champion": "P3-power-grouped-calendar-v1",
+  "document_baselines": [
+    {
+      "Código": "D1-linear",
+      "Folds com inclinação não negativa": 0,
+      "Parâmetros": 2,
+      "Previsão mínima": -2.5385838032,
+      "RMSE": 24.7268242495,
+      "R² no desenvolvimento": 0.2208492106,
+      "Viés (%)": -0.2145486244,
+      "Viés (kg)": -112.9187194381,
+      "Válido": false,
+      "WMAPE": 0.7304143328,
+      "WMAPE semanal": 0.274236158,
+      "coeficiente de preço": -22.6877484548,
+      "p-valor do modelo": 1.84303e-05
+    },
+    {
+      "Código": "D2-potencia",
+      "Folds com inclinação não negativa": 0,
+      "Parâmetros": 2,
+      "Previsão mínima": 9.295285745,
+      "RMSE": 26.3763558633,
+      "R² no desenvolvimento": 0.0656556739,
+      "Viés (%)": -0.152562781,
+      "Viés (kg)": -80.2950562286,
+      "Válido": true,
+      "WMAPE": 0.780021128,
+      "WMAPE semanal": 0.3026320082,
+      "coeficiente de preço": -10.0332642931,
+      "p-valor do modelo": 0.0254690123
+    }
+  ],
+  "functional_round": [
+    {
+      "Código": "P3",
+      "Folds com inclinação não negativa": 0,
+      "Parâmetros": 4,
+      "Previsão mínima": 0.6189003084,
+      "RMSE": 15.3871380357,
+      "Viés (%)": -0.2105820855,
+      "Viés (kg)": -110.8310971288,
+      "Válido": true,
+      "WMAPE": 0.352909662,
+      "WMAPE semanal": 0.3031817386
+    },
+    {
+      "Código": "E1",
+      "Folds com inclinação não negativa": 0,
+      "Parâmetros": 4,
+      "Previsão mínima": 0.600792489,
+      "RMSE": 15.4743183663,
+      "Viés (%)": -0.2156370191,
+      "Viés (kg)": -113.4915505919,
+      "Válido": true,
+      "WMAPE": 0.3544107465,
+      "WMAPE semanal": 0.3064808648
+    },
+    {
+      "Código": "L1",
+      "Folds com inclinação não negativa": 0,
+      "Parâmetros": 4,
+      "Previsão mínima": -24.7972314998,
+      "RMSE": 19.0812095275,
+      "Viés (%)": -0.298585525,
+      "Viés (kg)": -157.1480367927,
+      "Válido": false,
+      "WMAPE": 0.550223081,
+      "WMAPE semanal": 0.298585525
+    }
+  ],
+  "model_core_sha256": "761745984255a92f0745b74dabf6f228072650ee4bc89faf1f398bf3a371d5c5",
+  "selection_rules": {
+    "invalid_if_nonnegative_price_slope": true,
+    "invalid_if_nonpositive_prediction": true,
+    "near_best_absolute_wmape": 0.01,
+    "primary_metric": "WMAPE",
+    "secondary_metric_tolerance": 0.05
+  },
+  "trend_round": [
+    {
+      "Código": "P3",
+      "Folds com inclinação não negativa": 0,
+      "Parâmetros": 4,
+      "Previsão mínima": 0.6189003084,
+      "RMSE": 15.3871380357,
+      "Viés (%)": -0.2105820855,
+      "Viés (kg)": -110.8310971288,
+      "Válido": true,
+      "WMAPE": 0.352909662,
+      "WMAPE semanal": 0.3031817386
+    },
+    {
+      "Código": "T1",
+      "Folds com inclinação não negativa": 0,
+      "Parâmetros": 5,
+      "Previsão mínima": 0.5824823986,
+      "RMSE": 15.231332262,
+      "Viés (%)": -0.1960893314,
+      "Viés (kg)": -103.2034405048,
+      "Válido": true,
+      "WMAPE": 0.3593719667,
+      "WMAPE semanal": 0.3076611251
+    }
+  ]
+}

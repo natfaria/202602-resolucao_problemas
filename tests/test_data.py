@@ -1,11 +1,16 @@
-from src.modeling.demand_curve import assign_cluster
+from pathlib import Path
+
+from src.modeling.demand_curve import context_for_weekday, load_artifact
 
 
-def test_assign_cluster_uses_the_selected_calendar_partition():
-    assert assign_cluster("Segunda") == "Segunda"
-    assert assign_cluster("Terça") == "TerQuaQui"
-    assert assign_cluster("Quarta") == "TerQuaQui"
-    assert assign_cluster("Quinta") == "TerQuaQui"
-    assert assign_cluster("Sexta") == "Sexta"
-    assert assign_cluster("Sábado") == "FimDeSemana"
-    assert assign_cluster("Domingo") == "FimDeSemana"
+def test_frozen_artifact_uses_the_selected_calendar_partition():
+    artifact_path = Path(__file__).parents[1] / "models/demand_curve_champion.json"
+    artifact = load_artifact(artifact_path)
+
+    assert context_for_weekday(artifact, "Segunda") == "Segunda_a_Quinta"
+    assert context_for_weekday(artifact, "Terça") == "Segunda_a_Quinta"
+    assert context_for_weekday(artifact, "Quarta") == "Segunda_a_Quinta"
+    assert context_for_weekday(artifact, "Quinta") == "Segunda_a_Quinta"
+    assert context_for_weekday(artifact, "Sexta") == "Sexta"
+    assert context_for_weekday(artifact, "Sábado") == "Fim_de_semana"
+    assert context_for_weekday(artifact, "Domingo") == "Fim_de_semana"
