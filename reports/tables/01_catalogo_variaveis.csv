@@ -1,0 +1,9 @@
+Variável,Status após EDA,Justificativa,Risco
+ln_preco,Obrigatória,Relação de potência e interpretação direta da elasticidade,Preço médio pode ter erro de mensuração
+fim_semana,Candidata,Representação de calendário com um parâmetro,Somente dez observações de FDS
+dia_semana,Candidata,Diferenças de nível visíveis e sinal na triagem,Seis parâmetros adicionais
+grupo_calendario,Candidata a definir no treino,Alternativa intermediária entre FDS e sete dias,Agrupamento precisa ser congelado antes do holdout
+indice_tempo,Sensibilidade,Possível mudança de nível ao longo dos meses,Pode absorver variação não causal
+mes/quinzena/semana_mes,Documentadas,Hipóteses sazonais avaliadas,Poucos ciclos mensais disponíveis
+custo_kg,Fora da demanda por padrão,Entrada da margem na otimização,Não representa necessariamente preferência do cliente
+receita/margem,Proibidas como preditores,São consequências de preço e volume,Vazamento e relação circular

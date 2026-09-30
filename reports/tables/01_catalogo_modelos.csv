@@ -1,0 +1,8 @@
+Código,Especificação,Papel
+P0,ln(volume) ~ ln(preço),Baseline de potência sem calendário
+P1,ln(volume) ~ ln(preço) + fim_semana,Calendário mínimo
+P2,ln(volume) ~ ln(preço) + C(dia_semana),Níveis diários completos
+P3,ln(volume) ~ ln(preço) + grupo_calendario,Partição parcimoniosa definida no treino
+P4,campeão de calendário + indice_tempo,Sensibilidade temporal
+E1,ln(volume) ~ preço + calendário campeão,Forma exponencial challenger
+L1,volume ~ preço + calendário campeão,Diagnóstico linear; rejeitar se gerar volume negativo
