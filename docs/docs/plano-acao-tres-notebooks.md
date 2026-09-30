@@ -130,6 +130,12 @@ variáveis permanecem visíveis nas células, facilitando a revisão das hipóte
 `src/` acontece apenas quando uma transformação ou regra estiver estabilizada e precisar ser
 reutilizada pela modelagem, previsão ou otimização.
 
+Em qualquer etapa, scripts existentes produzidos e aprovados na fase anterior podem ser consumidos.
+Um script novo, porém, nunca deve antecipar a decisão que o próprio notebook está avaliando: ele só
+pode ser criado ao final da fase, depois que especificação, regras e diagnósticos estiverem
+congelados. Assim, `src/` é produto final reproduzível do notebook, e não fonte de uma conclusão
+pré-definida.
+
 | Módulo | Evolução planejada |
 |---|---|
 | `src/dataset.py` | Futuramente, leitura e validação estabilizadas para execução reproduzível |
@@ -302,6 +308,9 @@ Executar em duas rodadas para evitar uma combinação excessiva de alternativas:
 
 1. **Rodada de calendário:** comparar `P0`, `P1`, `P2` e `P3` com a mesma forma de potência e
    elasticidade compartilhada.
+   Incluir também uma segunda partição agrupada que separe segunda-feira de terça a quinta. As duas
+   distinções de calendário devem ser reestimadas pelo mesmo protocolo, sem herdar resultados ou
+   parâmetros já calculados.
 2. **Rodada de forma funcional:** usando a estrutura de calendário vencedora, comparar potência,
    exponencial e linear.
 3. **Rodada opcional de tendência:** desafiar o campeão com `indice_tempo` apenas se a EDA tiver
@@ -315,6 +324,11 @@ Regras de decisão:
 - não promover interações `preço × calendário` com a amostra atual, salvo evidência excepcional e
   explicitamente documentada;
 - registrar todos os modelos tentados para evitar seleção informal posterior.
+
+Antes dessas rodadas, ajustar e reportar a regressão preço-volume na leitura mais direta do
+enunciado, em escala original, e um baseline sem calendário em escala log-log. Esses modelos
+documentam a proposta mínima do desafio e devem ser comparados, pelas mesmas métricas temporais, com
+as especificações enriquecidas pelo calendário.
 
 ### 5.4 Ajuste do campeão nos 76 dias
 
