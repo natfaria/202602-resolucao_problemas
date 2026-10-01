@@ -380,6 +380,10 @@ Executar as rodadas abaixo para evitar uma combinação excessiva de alternativa
 3. **Rodada opcional de tendência:** desafiar o campeão com `indice_tempo` somente após uma
    visualização cronológica construída no próprio Notebook 2 e manter a variável apenas se ela
    melhorar a validação temporal.
+4. **Rodada de elasticidade:** somente depois de definir efeitos principais, calendário, forma
+   funcional e eventual tendência, comparar elasticidade compartilhada com interações
+   `ln(preço) × contexto`. A inclinação única usada nas rodadas anteriores é uma restrição de trabalho
+   para selecionar variáveis de nível, não uma conclusão antecipada.
 
 Regras de decisão:
 
@@ -389,14 +393,73 @@ Regras de decisão:
 - p-valores e testes de bloco podem apoiar a interpretação, mas não substituem validação temporal,
   tamanho de efeito, estabilidade e plausibilidade econômica;
 - rejeitar modelos com comportamento operacional inválido, como volumes negativos;
-- não promover interações `preço × calendário` com a amostra atual, salvo evidência excepcional e
-  explicitamente documentada;
+- testar interações `preço × calendário` apenas na rodada dedicada, respeitando o princípio
+  hierárquico de manter os respectivos efeitos principais; não estimar sete elasticidades diárias
+  com a amostra atual;
 - registrar todos os modelos tentados para evitar seleção informal posterior.
 
 Antes dessas rodadas, ajustar e reportar a regressão preço-volume na leitura mais direta do
 enunciado, em escala original, e um baseline sem calendário em escala log-log. Esses modelos
 documentam a proposta mínima do desafio e devem ser comparados, pelas mesmas métricas temporais, com
 as especificações enriquecidas pelo calendário.
+
+#### 5.3.4 Elasticidade compartilhada versus elasticidades por contexto
+
+A ordem metodológica é: selecionar primeiro as variáveis de nível e a forma funcional; somente
+depois verificar se o efeito de preço precisa variar por contexto. Isso respeita o princípio de
+hierarquia: uma interação não deve ser selecionada antes dos efeitos principais que a compõem.
+
+Usando a partição de calendário vencedora como análise principal, comparar:
+
+1. **`S0` — inclinação compartilhada:**
+   `ln(volume) ~ ln(preço) + contexto`.
+2. **`S1` — inclinações por contexto:**
+   `ln(volume) ~ ln(preço) * contexto`.
+
+No caso de `P3`, `S1` adiciona somente `ln(preço) × sexta` e
+`ln(preço) × fim_de_semana`. As elasticidades resultantes são a inclinação-base e as somas da
+inclinação-base com cada interação. Repetir a comparação condicionada a `P4` apenas como análise de
+sensibilidade, para verificar se a conclusão depende da separação da segunda-feira. Não escolher
+livremente entre todas as combinações depois de observar os resultados.
+
+Premissas e verificações obrigatórias:
+
+1. **Suporte comparável:** estimar e representar as curvas apenas na interseção das faixas de preço
+   dos contextos. Centralizar `ln(preço)` em um preço de referência comum pertencente a essa
+   interseção, reduzindo colinearidade sem alterar as inclinações.
+2. **Inferência robusta:** testar conjuntamente
+   `H0: interação_sexta = interação_fim_de_semana = 0` por Wald HC3. Reportar também contrastes
+   individuais, intervalos HC3 e p-valores corrigidos por Holm.
+3. **Magnitude operacional:** traduzir cada elasticidade para a variação prevista de volume diante de
+   uma alteração comercial de preço definida antes dos resultados. Diferenças estatísticas devem ser
+   acompanhadas de tamanho de efeito e intervalo de confiança.
+4. **Equivalência:** p-valor alto não demonstra elasticidades iguais. Se houver uma margem prática de
+   equivalência, defini-la antes do teste e verificar se o intervalo da diferença está integralmente
+   dentro dela. Sem essa margem, concluir apenas ausência de evidência suficiente para heterogeneidade.
+5. **Validação temporal:** executar `S0` e `S1` nas mesmas janelas expansivas e calcular todas as
+   métricas congeladas, globalmente, por contexto e por semana. O ganho não pode depender de uma única
+   data ou apenas do ajuste nos 76 dias.
+6. **Complexidade:** comparar BIC e AICc, pois `S0` e `S1` usam a mesma resposta, as mesmas observações
+   e são aninhados. Tratar `ΔBIC < 2` como inconclusivo; diferenças entre 2 e 6 como evidência moderada;
+   e diferenças superiores a 6 como evidência mais forte, sempre em conjunto com validação temporal.
+7. **Estabilidade:** acompanhar elasticidades em cada janela expansiva, bootstrap por blocos
+   semanais, leave-one-out, distância de Cook, VIF e número de mudanças de sinal.
+8. **Cobertura:** reportar quantidade de observações e amplitude de preço por contexto. Sexta e fim de
+   semana não podem receber a mesma confiança da categoria com maior cobertura.
+9. **Visualização ajustada:** traçar retas em `ln(preço) × ln(volume)` e curvas na escala original,
+   com bandas de confiança, mesmo preço de referência e somente suporte comum. O gráfico complementa,
+   mas não substitui, testes e validação.
+10. **Inclinação positiva:** não interpretar automaticamente uma elasticidade positiva como demanda
+    crescente. Verificar intervalo, bootstrap, influência, endogeneidade e estabilidade. Uma
+    inclinação positiva ou com frequentes mudanças de sinal torna a curva daquele contexto inadequada
+    para otimização sem pooling, regularização ou restrição monotônica previamente justificada.
+
+Promover `S1` apenas se ele melhorar de forma consistente a validação temporal, apresentar ganho de
+BIC ou AICc compatível com os parâmetros adicionais, produzir diferenças operacionalmente relevantes
+e manter elasticidades negativas e estáveis. Se o teste for significativo, mas a previsão piorar,
+manter `S0` para o objetivo preditivo e registrar a heterogeneidade como limitação. Se a previsão
+melhorar sem precisão inferencial, classificar o resultado como preditivo e incerto, sem alegação
+estrutural.
 
 ### 5.4 Ajuste do campeão nos 76 dias
 
@@ -405,7 +468,9 @@ as especificações enriquecidas pelo calendário.
 3. Calcular o fator de smearing de Duan usando apenas os resíduos do desenvolvimento.
 4. Registrar a faixa de preços observada para cada contexto aceito pelo modelo.
 5. Gerar a equação explícita na escala logarítmica e a função de previsão em kg.
-6. Salvar a especificação antes de carregar o holdout.
+6. Registrar se a elasticidade final é compartilhada ou específica por contexto, com todas as
+   fórmulas necessárias para reconstruí-la.
+7. Salvar a especificação antes de carregar o holdout.
 
 ### 5.5 Diagnósticos obrigatórios
 
@@ -416,8 +481,8 @@ as especificações enriquecidas pelo calendário.
 5. Autocorrelação residual e estatística de Durbin-Watson.
 6. Alavancagem, distância de Cook e leave-one-out da elasticidade.
 7. Comparação OLS versus Huber sem remover observações.
-8. Sensibilidade com e sem FDS para medir sua influência na elasticidade compartilhada.
-9. Verificação de colinearidade entre preço e variáveis de calendário ou tendência.
+8. Sensibilidade com e sem FDS para medir sua influência na estrutura de elasticidade selecionada.
+9. Verificação de colinearidade entre preço, variáveis de calendário, tendência e interações.
 10. Discussão de endogeneidade: preço pode refletir demanda antecipada e variáveis omitidas. Sem
     instrumento ou teste de preço, a curva deve ser apresentada como resposta preditiva
     observacional, não como efeito causal definitivamente identificado.
@@ -443,7 +508,8 @@ otimização.
 4. Calcular o mesmo painel congelado da validação interna: WMAPE, MAE, RMSE, erro absoluto mediano,
    sMAPE, RMSLE, viés em kg e percentual, WMAPE semanal e erro do volume acumulado.
 5. Verificar se todos os preços do holdout pertencem ao suporte do treino.
-6. Registrar que o período não contém FDS e, portanto, não valida essa parte da curva.
+6. Registrar que o período não contém FDS e, portanto, não valida seu intercepto nem uma eventual
+   elasticidade específica de fim de semana.
 7. Não alterar o modelo com base no resultado. Qualquer alteração posterior transforma o holdout em
    validação de desenvolvimento e deve ser registrada como nova versão.
 
@@ -453,7 +519,10 @@ otimização.
 
 - fórmula e versão da especificação;
 - coeficientes e nomes das variáveis;
+- indicação de elasticidade compartilhada ou variável, elasticidade por contexto, intervalos e teste
+  conjunto das interações;
 - fator de smearing;
+- suporte comum utilizado para comparar inclinações e preço de referência da centralização;
 - faixa de preço por contexto;
 - período e número de linhas de treino;
 - hash da base processada e do código relevante;
@@ -471,6 +540,10 @@ de volume.
   métricas de erro e variações contra o modelo anterior.
 - Tabela de contrastes de calendário com correção de Holm e interpretação que não confunda ausência
   de significância com equivalência.
+- Comparação `S0 × S1` com Wald HC3, BIC, AICc, métricas temporais, elasticidades por contexto e
+  estabilidade de sinal.
+- Gráficos das inclinações no suporte comum, com bandas de confiança nas escalas logarítmica e
+  original.
 - Curva campeã e sua interpretação econômica.
 - Previsões temporais internas e do holdout.
 - Diagnósticos de resíduos, influência e robustez.
@@ -481,7 +554,8 @@ de volume.
 ### 5.10 Critério de conclusão
 
 O Notebook 2 está concluído quando os agrupamentos estão justificados por contrastes refeitos no
-próprio documento, a tabela incremental apresenta todas as métricas congeladas e
+próprio documento, a tabela incremental apresenta todas as métricas congeladas, a escolha entre
+elasticidade compartilhada e variável está documentada por inferência, complexidade e validação, e
 `predict_volume(preço, contexto)` pode ser executada a partir do artefato salvo, reproduz as
 previsões documentadas, bloqueia extrapolações e fornece cenários de incerteza sem reabrir a seleção
 do modelo.
