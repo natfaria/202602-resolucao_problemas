@@ -1,0 +1,17 @@
+{
+  "artifact_version": 1,
+  "bootstrap_block": "inicio_semana",
+  "bootstrap_replications": 1000,
+  "bootstrap_seed": 42,
+  "elasticity_quantiles": {
+    "q025": -16.65393144411167,
+    "q500": -12.648891284179095,
+    "q975": -7.910011445154192
+  },
+  "model_core_sha256": "0b24565fee5671e87741e4975cc9090fac5d17434c50f0a0e6f881d670c6106f",
+  "scenario_multipliers": {
+    "central": 1.0,
+    "conservador": 0.5168692253939428,
+    "otimista": 1.5840984382065284
+  }
+}
