@@ -1,9 +1,9 @@
 Indicador,Resultado
-Breusch–Pagan p-valor,0.042165081279326694
-Durbin–Watson,1.834343732236502
-Ljung–Box p-valor (lag 5),0.9645334207705148
+Breusch–Pagan p-valor,0.01749081857772587
+Durbin–Watson,1.8281816379561113
+Ljung–Box p-valor (lag 5),0.9428361538791248
 Cook > 4/n,5.0
 Alavancagem > 2p/n,7.0
-Elasticidade LOO mínima,-14.46026768811093
-Elasticidade LOO máxima,-11.435792185373796
-Maior deslocamento LOO,1.8658211451837055
+Elasticidade LOO mínima,-14.099389290446455
+Elasticidade LOO máxima,-11.198542167710803
+Maior deslocamento LOO,1.734693889153439

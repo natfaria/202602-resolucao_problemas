@@ -298,9 +298,11 @@ produz um artefato que o otimizador pode consumir sem depender do notebook.
 
 1. Carregar somente `minerva_modelagem_treino.csv` durante a seleção.
 2. Ordenar cronologicamente e proibir embaralhamento aleatório.
-3. Usar uma janela inicial suficientemente grande para estimar os candidatos; a proposta é começar
-   com 55 observações e prever cada observação seguinte em esquema expanding window.
-4. Em cada passo, ajustar o modelo apenas com o passado.
+3. Usar três folds semanais expansivos e não sobrepostos: 39 observações de treino e 13 de validação,
+   depois 52/13 e, por fim, 65/11. O primeiro fold funciona também como teste de estresse devido à
+   amostra ligeiramente inferior à referência de 40 observações para preço apenas.
+4. Em cada fold, ajustar o modelo apenas com semanas passadas e validar nas duas semanas seguintes;
+   nunca embaralhar observações nem treinar com datas posteriores à validação.
 5. Recalcular dentro de cada janela toda estatística dependente do treino, inclusive smearing,
    médias, limites e transformações ajustadas.
 6. Registrar previsão, erro, data, dia da semana, preço e versão do candidato para cada origem.
@@ -553,6 +555,8 @@ de volume.
 ### 5.9 Entregáveis do Notebook 2
 
 - Ranking auditável dos candidatos.
+- Tabela detalhada dos três folds temporais, resumo de WMAPE de treino e validação, *gap*, dispersão
+  e pior janela para cada candidato.
 - Tabela incremental com variáveis adicionadas, p-valores robustos dos blocos, tamanhos de efeito,
   métricas de erro e variações contra o modelo anterior.
 - Tabela de contrastes de calendário com correção de Holm e interpretação que não confunda ausência

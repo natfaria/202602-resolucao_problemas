@@ -4,14 +4,14 @@
   "bootstrap_replications": 1000,
   "bootstrap_seed": 42,
   "elasticity_quantiles": {
-    "q025": -16.65393144411167,
-    "q500": -12.648891284179095,
-    "q975": -7.910011445154192
+    "q025": -15.984385571937771,
+    "q500": -12.336081865616407,
+    "q975": -6.711935999093363
   },
-  "model_core_sha256": "b6846c1d5998b3c2505c360d7fc7377318a9b3c5dac3599b03933051c4331585",
+  "model_core_sha256": "7ab845c977f33d7d1b59b12e68fa41adef083e22f6a2097e499b821dc36fb2e1",
   "scenario_multipliers": {
     "central": 1.0,
-    "conservador": 0.5168692253939428,
-    "otimista": 1.5840984382065284
+    "conservador": 0.5187113178031991,
+    "otimista": 1.751857370301003
   }
 }

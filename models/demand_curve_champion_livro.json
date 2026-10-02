@@ -15,38 +15,35 @@
       "Sexta": "Sexta",
       "Sábado": "Fim_de_semana",
       "Terça": "Segunda_a_Quinta"
-    },
-    "start_month_definition": "dia do mês entre 1 e 7"
+    }
   },
   "coefficients": {
-    "const": 93.26976731859486,
-    "contexto_Fim_de_semana": -2.973170375024866,
-    "contexto_Sexta": -1.3423660921818485,
-    "inicio_mes": -0.15279438796835595,
-    "ln_preco": -12.594446542927225
+    "const": 91.59146121459447,
+    "contexto_Fim_de_semana": -2.9670084419251888,
+    "contexto_Sexta": -1.3394398892280646,
+    "ln_preco": -12.364695401293016
   },
   "family": "power",
   "feature_order": [
     "const",
     "ln_preco",
     "contexto_Sexta",
-    "contexto_Fim_de_semana",
-    "inicio_mes"
+    "contexto_Fim_de_semana"
   ],
-  "formula": "ln(volume_kg) ~ ln(preco_kg) + I(sexta) + I(fim_de_semana) + I(dia_do_mes <= 7)",
+  "formula": "ln(volume_kg) ~ ln(preco_kg) + I(sexta) + I(fim_de_semana)",
   "holdout_evaluation": {
     "contains_weekend": false,
     "end": "2025-11-14",
-    "frozen_model_core_sha256": "b6846c1d5998b3c2505c360d7fc7377318a9b3c5dac3599b03933051c4331585",
+    "frozen_model_core_sha256": "7ab845c977f33d7d1b59b12e68fa41adef083e22f6a2097e499b821dc36fb2e1",
     "metrics": {
-      "MAE": 6.2749848793762855,
-      "MAPE": 0.5299471382501342,
-      "Previsão mínima": 3.7289323023703442,
+      "MAE": 6.6618356997892905,
+      "MAPE": 0.6088657534577235,
+      "Previsão mínima": 4.2545985176744345,
       "Previsões não positivas": 0,
-      "RMSE": 8.370006994929517,
-      "Viés (%)": -0.19928647778449549,
-      "WMAPE": 0.3417216695171797,
-      "sMAPE": 0.42905008819012214
+      "RMSE": 8.526306144497838,
+      "Viés (%)": -0.16205197349880232,
+      "WMAPE": 0.3627887016689389,
+      "sMAPE": 0.45021209065152157
     },
     "predictions_file": "data/processed/minerva_previsoes_holdout_livro.csv",
     "rows": 10,
@@ -54,14 +51,14 @@
   },
   "inference": {
     "covariance": "HC3",
-    "elasticity": -12.594446542927225,
+    "elasticity": -12.364695401293016,
     "elasticity_ci95": [
-      -17.94780407737546,
-      -7.241089008478991
+      -17.596937179720534,
+      -7.132453622865499
     ]
   },
-  "model_core_sha256": "b6846c1d5998b3c2505c360d7fc7377318a9b3c5dac3599b03933051c4331585",
-  "model_id": "power-cal3-add-inicio-mes-elast-compartilhada",
+  "model_core_sha256": "7ab845c977f33d7d1b59b12e68fa41adef083e22f6a2097e499b821dc36fb2e1",
+  "model_id": "power-cal3-elast-compartilhada",
   "observational_warning": "Curva preditiva observacional. Variáveis omitidas e demanda antecipada podem tornar o coeficiente de preço não causal.",
   "price_support": {
     "Fim_de_semana": {
@@ -82,22 +79,28 @@
   },
   "selection": {
     "champion_metrics": {
-      "MAE": 10.349948158429568,
-      "MAPE": 0.9000566116763502,
-      "Previsão mínima": 1.1944188086722174,
+      "MAE": 11.200088881220436,
+      "MAPE": 0.8513023893747729,
+      "Previsão mínima": 1.1913633955785747,
       "Previsões não positivas": 0,
-      "RMSE": 16.820245885158695,
-      "Viés (%)": -0.25352466319447897,
-      "WMAPE": 0.36832845284318383,
-      "sMAPE": 0.48193661380510733
+      "RMSE": 18.515984291092572,
+      "Viés (%)": -0.29932858620525493,
+      "WMAPE": 0.39858280893573245,
+      "sMAPE": 0.49830123425407763
     },
     "internal_fit_rows": 52,
     "internal_validation_rows": 24,
     "primary_metric": "WMAPE",
+    "rolling_validation": {
+      "details_file": "reports/tables/02b_validacao_temporal_folds.csv",
+      "folds": 3,
+      "mean_train_validation_gap": 0.106971401984138,
+      "mean_validation_wmape": 0.4021799539018886
+    },
     "validation_end": "2025-10-31",
     "validation_start": "2025-10-06"
   },
-  "smearing_factor": 1.120098531896568,
+  "smearing_factor": 1.1225968758916314,
   "training": {
     "data_file": "data/processed/minerva_modelagem_treino.csv",
     "data_sha256": "ed5fb2cba0b14c38317d2e2a44d830843c95b0bb5911f6ec30da7997520e9b1c",
