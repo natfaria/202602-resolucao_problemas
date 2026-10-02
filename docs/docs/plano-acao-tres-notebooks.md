@@ -67,8 +67,8 @@ empírico.
 
 ### 2.7 Independência narrativa e protocolo de explicação
 
-- Cada notebook deve ser construído a partir da fonte bruta, do enunciado do desafio e das
-  referências bibliográficas listadas neste plano.
+- Cada notebook deve ser construído a partir da fonte bruta, do documento do Desafio
+  Minerva-Unifesp-ITA e das referências bibliográficas listadas neste plano.
 - Resultados, conclusões, escolhas de variáveis, testes e figuras de notebooks ou tentativas
   anteriores não podem ser usados como evidência nem mencionados na narrativa. Os notebooks antigos
   servem apenas como arquivo histórico e não são fonte metodológica.
@@ -79,8 +79,10 @@ empírico.
 - Justificativas e interpretações devem permanecer em Markdown, não escondidas em comentários ou
   mensagens de código. Após cada execução integral, o texto deve ser conferido contra os resultados
   atualizados.
-- Somente referências bibliográficas e o enunciado do desafio podem fundamentar escolhas
-  metodológicas; nenhuma referência cruzada a testes anteriores deve aparecer no documento final.
+- Somente referências bibliográficas e o documento da Minerva podem fundamentar escolhas
+  metodológicas. O Notebook 2 pode usar o EDA do Notebook 1 para formar o catálogo empírico de
+  variáveis candidatas, mas deve reestimar e justificar cada decisão com sua própria amostra de
+  desenvolvimento; resultados de outras tentativas não podem ser importados como evidência.
 
 ## 3. Organização proposta no Cookiecutter Data Science
 
@@ -175,8 +177,9 @@ justificado de modelos candidatos. Ele não escolhe a curva final.
    produtos.
 4. Verificar datas duplicadas, ordem cronológica, lacunas, valores ausentes e valores não positivos.
 5. Verificar se receita, custo e volume possuem unidades consistentes.
-6. Comparar o esquema real com o PDF: o enunciado menciona imposto realizado, mas a planilha atual
-   não possui essa coluna. Registrar a diferença sem criar valores artificiais.
+6. Comparar o esquema real com `docs/referencias/Minerva_Unifesp_ITA.pdf`: o documento da Minerva
+   menciona imposto realizado, mas a planilha atual não possui essa coluna. Registrar a diferença
+   sem criar valores artificiais.
 7. Ler meta, tolerância e variação máxima da própria planilha, sem fixar percentuais no código.
 8. Registrar a divergência entre a tolerância textual descrita no PDF e o valor da instância da
    planilha; a instância deve alimentar o cálculo, e a divergência deve aparecer no relatório.
@@ -195,6 +198,7 @@ ocorre depois que uma transformação for aprovada para reutilização:
 | `ln_preco` | log do preço positivo | Elasticidade na curva de potência |
 | `dia_semana` | derivado da data | Contexto conhecido antes da decisão |
 | `fim_semana` | sábado ou domingo | Alternativa parcimoniosa de calendário |
+| `inicio_mes` | dias 1 a 7, conforme hipótese do documento da Minerva | Candidato de nível solicitado pelo desafio |
 | `mes`, `quinzena`, `semana_mes` | derivados da data | Hipóteses exploratórias, não entradas obrigatórias |
 | `indice_tempo` | sequência cronológica | Candidato simples para mudança de nível ao longo do período |
 | `inicio_semana` | data de referência semanal | Agregação e métricas semanais |
@@ -242,13 +246,13 @@ Ao final da EDA, congelar um conjunto pequeno de candidatos para o Notebook 2:
 
 | Código | Especificação | Finalidade |
 |---|---|---|
-| `P0` | `ln(volume) ~ ln(preco)` | Baseline de potência sem calendário |
-| `P1` | `ln(volume) ~ ln(preco) + fim_semana` | Calendário mínimo |
-| `P2` | `ln(volume) ~ ln(preco) + C(dia_semana)` | Níveis diários completos |
-| `P3` | `ln(volume) ~ ln(preco) + grupo_calendario` | Partição parcimoniosa motivada pelo treino |
-| `P4` | campeão de calendário + `indice_tempo` | Sensibilidade a mudança temporal |
-| `E1` | `ln(volume) ~ preco + calendário campeão` | Forma exponencial como challenger |
-| `L1` | `volume ~ preco + calendário campeão` | Diagnóstico linear; rejeitar se gerar volume negativo |
+| `MIN_PRECO_LINEAR` | `volume ~ preco` | Modelo mínimo linear |
+| `MIN_PRECO_EXPONENCIAL` | `ln(volume) ~ preco` | Modelo mínimo exponencial |
+| `MIN_PRECO_LOGLOG` | `ln(volume) ~ ln(preco)` | Modelo mínimo de elasticidade constante |
+| `CAL1_UTIL_FDS` | modelo mínimo + `fim_semana` | Calendário com dois níveis |
+| `CAL2_SETE_DIAS` | modelo mínimo + `C(dia_semana)` | Níveis diários completos |
+| `CAL3_SEGQUI_SEX_FDS` | modelo mínimo + grupos segunda–quinta, sexta e FDS | Partição parcimoniosa principal |
+| `CAL4_SEG_TERQUI_SEX_FDS` | modelo mínimo + segunda, terça–quinta, sexta e FDS | Sensibilidade à segunda-feira |
 
 `grupo_calendario` só poderá ser usado se sua regra for definida com o conjunto de desenvolvimento
 e antes da avaliação final. Nenhum candidato terá elasticidade específica por grupo na seleção
@@ -315,8 +319,10 @@ produz um artefato que o otimizador pode consumir sem depender do notebook.
 ### 5.3 Construção incremental e seleção champion-challenger
 
 Toda justificativa deve ser refeita no próprio Notebook 2 usando apenas o conjunto de
-desenvolvimento. Resultados, p-valores, agrupamentos ou conclusões obtidos em notebooks anteriores
-não podem ser importados, citados ou tratados como evidência.
+desenvolvimento. O EDA do Notebook 1 fornece hipóteses candidatas — calendário, mês, quinzena,
+semana do mês e tendência —, enquanto o documento da Minerva fornece a hipótese de início do mês.
+Resultados, p-valores, parâmetros ou conclusões de outras tentativas não podem ser importados nem
+tratados como evidência.
 
 #### 5.3.1 Justificativa inferencial dos agrupamentos
 
@@ -339,17 +345,30 @@ controlando por preço, para verificar quais diferenças de nível são sustenta
 
 #### 5.3.2 Sequência incremental de variáveis
 
-Construir modelos aninhados, preservando a mesma forma de potência e elasticidade compartilhada:
+Executar duas sequências transparentes, preservando as mesmas observações e uma elasticidade
+compartilhada dentro de cada comparação de calendário ou variável adicional.
 
-1. **`P0` — preço:** `ln(volume) ~ ln(preço)`.
-2. **`P1` — fim de semana:** adicionar o indicador de fim de semana.
-3. **`P3` — sexta-feira:** adicionar uma distinção para sexta, mantendo segunda a quinta agrupadas.
-4. **`P4` — segunda-feira:** adicionar uma distinção para segunda, usando terça a quinta como nível
-   agrupado.
-5. **`P2` — calendário saturado:** liberar os níveis individuais de dia da semana como desafio de
-   maior complexidade.
-6. **`T1` — tendência:** adicionar `indice_tempo` ao melhor calendário somente depois da rodada de
-   agrupamento.
+**Sequência A — modelo mínimo e estrutura de calendário levantada no EDA:**
+
+1. **`MIN_PRECO_*` — preço apenas:** comparar linear, exponencial e log-log como em Phillips 4.2.1.
+2. **`CAL1_UTIL_FDS` — fim de semana:** adicionar o indicador de fim de semana.
+3. **`CAL3_SEGQUI_SEX_FDS` — sexta-feira:** manter segunda a quinta agrupadas e separar sexta e FDS.
+4. **`CAL4_SEG_TERQUI_SEX_FDS` — segunda-feira:** separar segunda de terça a quinta.
+5. **`CAL2_SETE_DIAS` — calendário saturado:** liberar os níveis individuais de dia da semana.
+
+**Sequência B — variáveis adicionais do EDA e do documento da Minerva:**
+
+1. **`BASE_CALENDARIO` — calendário:** manter apenas a estrutura vencedora da Sequência A.
+2. **`ADD_INICIO_MES` — início do mês:** adicionar `inicio_mes`, hipótese do documento da Minerva.
+3. **`ADD_TENDENCIA` — tendência:** adicionar `indice_tempo`, hipótese da série temporal do EDA.
+4. **`ADD_MES` — mês:** adicionar indicadores de mês levantados no EDA.
+5. **`ADD_QUINZENA` — quinzena:** adicionar o indicador de segunda quinzena levantado no EDA.
+6. **`ADD_SEMANA_MES` — semana do mês:** adicionar os níveis de `semana_mes` levantados no EDA.
+7. **`ADD_INICIO_MES_TENDENCIA`:** avaliar conjuntamente início do mês e tendência.
+
+Na Sequência B, definir antes da comparação uma zona de desempenho equivalente: WMAPE até 2 pontos
+percentuais acima do melhor resultado e RMSE até 5% acima do menor RMSE. Entre candidatos nessa
+zona, preferir menos parâmetros e usar AICc e BIC apenas como apoio de parcimônia na mesma escala.
 
 Produzir uma tabela incremental única com, no mínimo:
 
@@ -371,15 +390,13 @@ validação temporal.
 
 Executar as rodadas abaixo para evitar uma combinação excessiva de alternativas:
 
-1. **Rodada de calendário:** comparar `P0`, `P1`, `P2`, `P3` e `P4` com a mesma forma de potência e
-   elasticidade compartilhada. `P3` agrupa segunda a quinta; `P4` separa segunda de terça a quinta.
-   Todas as distinções devem ser reestimadas pelo mesmo protocolo, sem herdar resultados ou
-   parâmetros já calculados.
-2. **Rodada de forma funcional:** usando a estrutura de calendário vencedora, comparar potência,
-   exponencial e linear.
-3. **Rodada opcional de tendência:** desafiar o campeão com `indice_tempo` somente após uma
-   visualização cronológica construída no próprio Notebook 2 e manter a variável apenas se ela
-   melhorar a validação temporal.
+1. **Rodada de forma funcional mínima:** comparar `MIN_PRECO_LINEAR`, `MIN_PRECO_EXPONENCIAL` e
+   `MIN_PRECO_LOGLOG`, todos usando apenas preço.
+2. **Rodada de calendário:** aplicar `CAL1_UTIL_FDS`, `CAL2_SETE_DIAS`, `CAL3_SEGQUI_SEX_FDS` e
+   `CAL4_SEG_TERQUI_SEX_FDS` às formas funcionais, mantendo as mesmas observações e métricas.
+3. **Rodada de variáveis adicionais:** comparar `BASE_CALENDARIO` e todos os candidatos `ADD_*`,
+   deixando explícita a origem de cada hipótese no EDA ou no documento da Minerva e aplicando a zona
+   de desempenho equivalente definida antes dos resultados.
 4. **Rodada de elasticidade:** somente depois de definir efeitos principais, calendário, forma
    funcional e eventual tendência, comparar elasticidade compartilhada com interações
    `ln(preço) × contexto`. A inclinação única usada nas rodadas anteriores é uma restrição de trabalho
@@ -399,9 +416,9 @@ Regras de decisão:
 - registrar todos os modelos tentados para evitar seleção informal posterior.
 
 Antes dessas rodadas, ajustar e reportar a regressão preço-volume na leitura mais direta do
-enunciado, em escala original, e um baseline sem calendário em escala log-log. Esses modelos
-documentam a proposta mínima do desafio e devem ser comparados, pelas mesmas métricas temporais, com
-as especificações enriquecidas pelo calendário.
+documento da Minerva, em escala original, e um baseline sem calendário em escala log-log. Esses
+modelos documentam a proposta mínima do desafio e devem ser comparados, pelas mesmas métricas
+temporais, com as especificações enriquecidas pelo calendário.
 
 #### 5.3.4 Elasticidade compartilhada versus elasticidades por contexto
 
@@ -411,14 +428,14 @@ hierarquia: uma interação não deve ser selecionada antes dos efeitos principa
 
 Usando a partição de calendário vencedora como análise principal, comparar:
 
-1. **`S0` — inclinação compartilhada:**
+1. **`ELAST_COMPARTILHADA` — inclinação compartilhada:**
    `ln(volume) ~ ln(preço) + contexto`.
-2. **`S1` — inclinações por contexto:**
+2. **`ELAST_POR_CONTEXTO` — inclinações por contexto:**
    `ln(volume) ~ ln(preço) * contexto`.
 
-No caso de `P3`, `S1` adiciona somente `ln(preço) × sexta` e
+No caso de `CAL3_SEGQUI_SEX_FDS`, `ELAST_POR_CONTEXTO` adiciona somente `ln(preço) × sexta` e
 `ln(preço) × fim_de_semana`. As elasticidades resultantes são a inclinação-base e as somas da
-inclinação-base com cada interação. Repetir a comparação condicionada a `P4` apenas como análise de
+inclinação-base com cada interação. Repetir a comparação condicionada a `CAL4_SEG_TERQUI_SEX_FDS` apenas como análise de
 sensibilidade, para verificar se a conclusão depende da separação da segunda-feira. Não escolher
 livremente entre todas as combinações depois de observar os resultados.
 
@@ -436,10 +453,10 @@ Premissas e verificações obrigatórias:
 4. **Equivalência:** p-valor alto não demonstra elasticidades iguais. Se houver uma margem prática de
    equivalência, defini-la antes do teste e verificar se o intervalo da diferença está integralmente
    dentro dela. Sem essa margem, concluir apenas ausência de evidência suficiente para heterogeneidade.
-5. **Validação temporal:** executar `S0` e `S1` nas mesmas janelas expansivas e calcular todas as
+5. **Validação temporal:** executar `ELAST_COMPARTILHADA` e `ELAST_POR_CONTEXTO` nas mesmas janelas expansivas e calcular todas as
    métricas congeladas, globalmente, por contexto e por semana. O ganho não pode depender de uma única
    data ou apenas do ajuste nos 76 dias.
-6. **Complexidade:** comparar BIC e AICc, pois `S0` e `S1` usam a mesma resposta, as mesmas observações
+6. **Complexidade:** comparar BIC e AICc, pois os dois candidatos usam a mesma resposta e observações
    e são aninhados. Tratar `ΔBIC < 2` como inconclusivo; diferenças entre 2 e 6 como evidência moderada;
    e diferenças superiores a 6 como evidência mais forte, sempre em conjunto com validação temporal.
 7. **Estabilidade:** acompanhar elasticidades em cada janela expansiva, bootstrap por blocos
@@ -454,10 +471,10 @@ Premissas e verificações obrigatórias:
     inclinação positiva ou com frequentes mudanças de sinal torna a curva daquele contexto inadequada
     para otimização sem pooling, regularização ou restrição monotônica previamente justificada.
 
-Promover `S1` apenas se ele melhorar de forma consistente a validação temporal, apresentar ganho de
+Promover `ELAST_POR_CONTEXTO` apenas se ele melhorar de forma consistente a validação temporal, apresentar ganho de
 BIC ou AICc compatível com os parâmetros adicionais, produzir diferenças operacionalmente relevantes
 e manter elasticidades negativas e estáveis. Se o teste for significativo, mas a previsão piorar,
-manter `S0` para o objetivo preditivo e registrar a heterogeneidade como limitação. Se a previsão
+manter `ELAST_COMPARTILHADA` para o objetivo preditivo e registrar a heterogeneidade como limitação. Se a previsão
 melhorar sem precisão inferencial, classificar o resultado como preditivo e incerto, sem alegação
 estrutural.
 
@@ -540,7 +557,7 @@ de volume.
   métricas de erro e variações contra o modelo anterior.
 - Tabela de contrastes de calendário com correção de Holm e interpretação que não confunda ausência
   de significância com equivalência.
-- Comparação `S0 × S1` com Wald HC3, BIC, AICc, métricas temporais, elasticidades por contexto e
+- Comparação `ELAST_COMPARTILHADA × ELAST_POR_CONTEXTO` com Wald HC3, BIC, AICc, métricas temporais, elasticidades por contexto e
   estabilidade de sinal.
 - Gráficos das inclinações no suporte comum, com bandas de confiança nas escalas logarítmica e
   original.

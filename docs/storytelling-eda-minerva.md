@@ -240,7 +240,7 @@ Ele não permite concluir que:
 
 - Notebook executado: `notebooks/1.0-minerva-eda-preparacao.ipynb`.
 - Plano metodológico: `docs/docs/plano-acao-tres-notebooks.md`.
-- Enunciado do desafio: `docs/referencias/Minerva_Unifesp_ITA.pdf`.
+- Documento do Desafio Minerva-Unifesp-ITA: `docs/referencias/Minerva_Unifesp_ITA.pdf`.
 - PHILLIPS, Robert L. *Pricing and Revenue Optimization*. 2. ed.
 - MULLAPUDI, Pavan Nithin. *Pricing Optimization across Domains*.
 

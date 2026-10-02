@@ -8,7 +8,7 @@
     "q500": -12.648891284179095,
     "q975": -7.910011445154192
   },
-  "model_core_sha256": "0b24565fee5671e87741e4975cc9090fac5d17434c50f0a0e6f881d670c6106f",
+  "model_core_sha256": "b6846c1d5998b3c2505c360d7fc7377318a9b3c5dac3599b03933051c4331585",
   "scenario_multipliers": {
     "central": 1.0,
     "conservador": 0.5168692253939428,

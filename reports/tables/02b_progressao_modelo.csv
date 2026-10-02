@@ -1,0 +1,6 @@
+Etapa,Código,O que o modelo faz,Origem da hipótese,Parâmetros,WMAPE (%),RMSE (kg),BIC,Decisão
+1. Modelo mínimo,MIN_PRECO_LOGLOG,Explica volume somente por log(preço),Phillips 4.2.1,2,72.62416987799826,27.746551386438306,153.09667404197128,Referência inicial
+2. Calendário-base,BASE_CALENDARIO,Adiciona níveis para sexta e fim de semana,EDA + documento da Minerva,4,39.858280893573244,18.515984291092572,75.71247760344846,Promovido
+3. Variável adicional,ADD_INICIO_MES,Adiciona indicador para os dias 1 a 7,Documento da Minerva,5,36.83284528431838,16.820245885158695,76.67891868047082,Promovido
+4. Challenger de inclinação,ELAST_POR_CONTEXTO,Permite elasticidades distintas por contexto,Phillips 4.3.3 + EDA,7,41.56331830183429,18.845477016044892,83.99664962998357,Rejeitado
+5. Modelo final,ELAST_COMPARTILHADA,Mantém início do mês e uma elasticidade comum,Validação temporal,5,36.83284528431838,16.820245885158695,76.67891868047082,Campeão congelado

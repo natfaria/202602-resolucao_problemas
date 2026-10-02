@@ -37,7 +37,7 @@
   "holdout_evaluation": {
     "contains_weekend": false,
     "end": "2025-11-14",
-    "frozen_model_core_sha256": "0b24565fee5671e87741e4975cc9090fac5d17434c50f0a0e6f881d670c6106f",
+    "frozen_model_core_sha256": "b6846c1d5998b3c2505c360d7fc7377318a9b3c5dac3599b03933051c4331585",
     "metrics": {
       "MAE": 6.2749848793762855,
       "MAPE": 0.5299471382501342,
@@ -60,8 +60,8 @@
       -7.241089008478991
     ]
   },
-  "model_core_sha256": "0b24565fee5671e87741e4975cc9090fac5d17434c50f0a0e6f881d670c6106f",
-  "model_id": "book-method-power-grouped-start-month-s0",
+  "model_core_sha256": "b6846c1d5998b3c2505c360d7fc7377318a9b3c5dac3599b03933051c4331585",
+  "model_id": "power-cal3-add-inicio-mes-elast-compartilhada",
   "observational_warning": "Curva preditiva observacional. Variáveis omitidas e demanda antecipada podem tornar o coeficiente de preço não causal.",
   "price_support": {
     "Fim_de_semana": {
