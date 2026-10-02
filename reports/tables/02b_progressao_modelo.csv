@@ -1,7 +1,8 @@
 Etapa,Código,O que o modelo faz,Origem da hipótese,Parâmetros,WMAPE corte único (%),WMAPE médio janelas (%),Gap médio WMAPE (p.p.),Pior WMAPE (%),BIC,Decisão
 1. Modelo mínimo,MIN_PRECO_LOGLOG,Explica volume somente por log(preço),Phillips 4.2.1,2,72.62416987799826,72.0525743474982,17.825446711010397,89.12338401337199,153.09667404197128,Referência inicial
-2. Calendário-base,BASE_CALENDARIO,Adiciona níveis para sexta e fim de semana,EDA + documento da Minerva,4,39.858280893573244,40.21799539018886,10.6971401984138,47.056125716755474,75.71247760344846,Promovido
-3. Início do mês,ADD_INICIO_MES,Adiciona indicador para os dias 1 a 7,Documento da Minerva,5,36.83284528431838,41.36749267195234,12.1658162747576,50.40374964299657,76.67891868047082,Rejeitado nas janelas
-4. Semana do mês,ADD_SEMANA_MES,Adiciona quatro indicadores de semana,EDA,8,35.49052324360961,58.1551256037497,29.05541912615745,105.5395397154624,87.52077791965681,Rejeitado por instabilidade
-5. Inclinações por contexto,ELAST_POR_CONTEXTO,Permite elasticidades distintas por contexto,Phillips 4.3.3 + EDA,6,45.909616456509625,44.34355758272446,15.482000268364512,52.96466901274769,82.70861529572417,Rejeitado
-6. Modelo final,ELAST_COMPARTILHADA,Mantém calendário e uma elasticidade comum,Validação temporal,4,39.858280893573244,40.21799539018886,10.6971401984138,47.056125716755474,75.71247760344846,Campeão congelado
+2. Calendário-base,CAL3_SEGQUI_SEX_FDS,Adiciona níveis para sexta e fim de semana,EDA + documento da Minerva,4,39.858280893573244,40.21799539018886,10.6971401984138,47.056125716755474,75.71247760344846,Promovido
+3. Segunda separada,CAL4_SEG_TERQUI_SEX_FDS,Separa segunda de terça–quinta,EDA,5,42.58980693767435,42.54250793340473,15.950745313994316,46.5703986980909,72.01388001582765,Rejeitado nas janelas
+4. Início do mês,ADD_INICIO_MES,Adiciona indicador para os dias 1 a 7,Documento da Minerva,5,36.83284528431838,41.36749267195234,12.1658162747576,50.40374964299657,76.67891868047082,Rejeitado nas janelas
+5. Semana do mês,ADD_SEMANA_MES,Adiciona quatro indicadores de semana,EDA,8,35.49052324360961,58.1551256037497,29.05541912615745,105.5395397154624,87.52077791965681,Rejeitado por instabilidade
+6. Inclinações por contexto,ELAST_POR_CONTEXTO,Permite elasticidades distintas por contexto,Phillips 4.3.3 + EDA,6,45.909616456509625,44.34355758272446,15.482000268364512,52.96466901274769,82.70861529572417,Rejeitado
+7. Modelo final,ELAST_COMPARTILHADA,Mantém calendário e uma elasticidade comum,Validação temporal,4,39.858280893573244,40.21799539018886,10.6971401984138,47.056125716755474,75.71247760344846,Campeão congelado

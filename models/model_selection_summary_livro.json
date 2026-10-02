@@ -1,4 +1,81 @@
 {
+  "calendar_rolling_round": [
+    {
+      "Código": "CAL3_SEGQUI_SEX_FDS",
+      "Desvio_WMAPE_validação": 0.0911444153,
+      "Elasticidade_máxima": -6.6396648562,
+      "Elasticidade_mínima": -10.8759943798,
+      "Gap_médio_WMAPE": 0.106971402,
+      "Melhor_WMAPE": 0.2987050872,
+      "Parâmetros": 4,
+      "Pior_WMAPE": 0.4705612572,
+      "Previsões_não_positivas": 0,
+      "Válido para demanda": true,
+      "WMAPE_médio_treino": 0.2952085519,
+      "WMAPE_médio_validação": 0.4021799539,
+      "Zona equivalente": true
+    },
+    {
+      "Código": "CAL4_SEG_TERQUI_SEX_FDS",
+      "Desvio_WMAPE_validação": 0.0487734941,
+      "Elasticidade_máxima": -6.5960342365,
+      "Elasticidade_mínima": -11.3561016133,
+      "Gap_médio_WMAPE": 0.1595074531,
+      "Melhor_WMAPE": 0.3711966108,
+      "Parâmetros": 5,
+      "Pior_WMAPE": 0.465703987,
+      "Previsões_não_positivas": 0,
+      "Válido para demanda": true,
+      "WMAPE_médio_treino": 0.2659176262,
+      "WMAPE_médio_validação": 0.4254250793,
+      "Zona equivalente": false
+    },
+    {
+      "Código": "CAL2_SETE_DIAS",
+      "Desvio_WMAPE_validação": 0.0277950087,
+      "Elasticidade_máxima": -5.059348581,
+      "Elasticidade_mínima": -11.0317310257,
+      "Gap_médio_WMAPE": 0.1882744338,
+      "Melhor_WMAPE": 0.4200736015,
+      "Parâmetros": 8,
+      "Pior_WMAPE": 0.4752054119,
+      "Previsões_não_positivas": 0,
+      "Válido para demanda": true,
+      "WMAPE_médio_treino": 0.2573089129,
+      "WMAPE_médio_validação": 0.4455833467,
+      "Zona equivalente": false
+    },
+    {
+      "Código": "CAL1_UTIL_FDS",
+      "Desvio_WMAPE_validação": 0.1571365084,
+      "Elasticidade_máxima": -3.5367815185,
+      "Elasticidade_mínima": -9.454981161,
+      "Gap_médio_WMAPE": 0.0715335874,
+      "Melhor_WMAPE": 0.3313316653,
+      "Parâmetros": 3,
+      "Pior_WMAPE": 0.6341749189,
+      "Previsões_não_positivas": 0,
+      "Válido para demanda": true,
+      "WMAPE_médio_treino": 0.4354641075,
+      "WMAPE_médio_validação": 0.5069976949,
+      "Zona equivalente": false
+    },
+    {
+      "Código": "CAL0_SEM_CALENDARIO",
+      "Desvio_WMAPE_validação": 0.1993403846,
+      "Elasticidade_máxima": -3.2085412439,
+      "Elasticidade_mínima": -7.6399576851,
+      "Gap_médio_WMAPE": 0.1782544671,
+      "Melhor_WMAPE": 0.501453154,
+      "Parâmetros": 2,
+      "Pior_WMAPE": 0.8912338401,
+      "Previsões_não_positivas": 0,
+      "Válido para demanda": true,
+      "WMAPE_médio_treino": 0.5422712764,
+      "WMAPE_médio_validação": 0.7205257435,
+      "Zona equivalente": false
+    }
+  ],
   "calendar_round": [
     {
       "AICc na escala de ajuste": 68.7585665589,
