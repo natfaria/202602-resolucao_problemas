@@ -71,8 +71,8 @@ $$
 \overline Q_w = M_w(1+\varepsilon_w^+)
 $$
 
-Em linguagem natural, a meta nominal é transformada em uma faixa admissível. As tolerâncias
-inferior e superior podem ser diferentes. Se a regra de negócio estabelecer somente uma meta
+A meta nominal é transformada em uma faixa admissível. As tolerâncias inferior e superior podem
+ser diferentes. Se a regra de negócio estabelecer somente uma meta
 mínima, $\overline Q_w$ deve ser omitido em vez de receber um valor artificialmente grande.
 
 ### 3.2 Parâmetros da demanda
@@ -138,8 +138,8 @@ $$
 D_t:\ [\underline p_t,\overline p_t]\longrightarrow \mathbb{R}_{>0}
 $$
 
-Em linguagem natural, para cada período e dentro do suporte autorizado, a curva transforma um preço
-em uma previsão positiva de volume.
+Para cada período e dentro do suporte autorizado, a curva transforma um preço em uma previsão
+positiva de volume.
 
 ### 5.2 Especialização para uma curva de potência
 
@@ -191,9 +191,8 @@ $$
 \left[(1-\tau_t)p_t-c_t\right]D_t(p_t;\theta)
 $$
 
-Em linguagem natural, o modelo escolhe os preços que produzem a maior soma de margens previstas ao
-longo do horizonte. A quantidade vendida em cada período é determinada pela curva de demanda
-congelada.
+O modelo escolhe os preços que produzem a maior soma de margens previstas ao longo do horizonte. A
+quantidade vendida em cada período é determinada pela curva de demanda congelada.
 
 ### 6.2 Extensão por valor esperado
 
@@ -207,8 +206,8 @@ $$
 \left[(1-\tau_t)p_t-c_t\right]D_{ts}(p_t;\theta_s)
 $$
 
-Em linguagem natural, maximiza-se a margem média ponderada entre os cenários. Essa formulação exige
-que os pesos $\pi_s$ sejam definidos antes de observar a solução.
+Maximiza-se a margem média ponderada entre os cenários. Essa formulação exige que os pesos $\pi_s$
+sejam definidos antes de observar a solução.
 
 Uma coleção de cenários sem probabilidades não deve ser transformada automaticamente em valor
 esperado. Nesse caso, os cenários servem para sensibilidade ou para uma formulação robusta
@@ -252,8 +251,8 @@ $$
 p^{\mathrm{ant}}-p_1\le\Delta_0
 $$
 
-Em linguagem natural, a primeira decisão não pode se afastar do último preço conhecido além do
-limite de entrada definido pela operação.
+A primeira decisão não pode se afastar do último preço conhecido além do limite de entrada definido
+pela operação.
 
 ### 7.4 Estabilidade entre decisões consecutivas
 
@@ -274,9 +273,8 @@ p_{t-1}-p_t\le\Delta_t,
 \qquad t\in T\setminus\{1\}
 $$
 
-Em linguagem natural, duas decisões adjacentes na sequência operacional não podem diferir além do
-limite informado. A instância deve declarar se períodos sem operação interrompem ou não essa
-sequência.
+Duas decisões adjacentes na sequência operacional não podem diferir além do limite informado. A
+instância deve declarar se períodos sem operação interrompem ou não essa sequência.
 
 ### 7.5 Faixa de volume por janela
 
@@ -289,9 +287,9 @@ $$
 \qquad w\in W
 $$
 
-Em linguagem natural, a soma dos volumes previstos em cada janela precisa permanecer dentro da
-faixa contratual correspondente. As janelas são verificadas separadamente; compensar déficit de uma
-semana com excesso de outra não é permitido, salvo previsão expressa da regra de negócio.
+A soma dos volumes previstos em cada janela precisa permanecer dentro da faixa contratual
+correspondente. As janelas são verificadas separadamente; compensar déficit de uma semana com
+excesso de outra não é permitido, salvo previsão expressa da regra de negócio.
 
 ### 7.6 Incrementos comerciais opcionais
 
@@ -302,9 +300,9 @@ p_t=\underline p_t+h_tz_t,
 \qquad z_t\in\mathbb{Z}_{\ge0}
 $$
 
-Em linguagem natural, o preço passa a ser um múltiplo do incremento $h_t$ contado a partir do limite
-inferior. Essa extensão transforma o problema contínuo em um problema com variáveis inteiras e não
-deve ser ativada sem uma regra comercial explícita.
+O preço passa a ser um múltiplo do incremento $h_t$ contado a partir do limite inferior. Essa
+extensão transforma o problema contínuo em um problema com variáveis inteiras e não deve ser
+ativada sem uma regra comercial explícita.
 
 ## 8. Formulação compacta
 
@@ -313,20 +311,28 @@ A formulação determinística estrita pode ser resumida como:
 $$
 \begin{aligned}
 \max_{p,q}\quad
-& \sum_{t\in T}\left[(1-\tau_t)p_t-c_t\right]q_t \\
+& \sum_{t\in T}
+\underbrace{\left[(1-\tau_t)p_t-c_t\right]}_{\text{margem unitária}}
+\underbrace{q_t}_{\text{volume}} \\
 \text{sujeito a}\quad
-& q_t=D_t(p_t;\theta), && t\in T, \\
-& \underline p_t\le p_t\le\overline p_t, && t\in T, \\
-& |p_1-p^{\mathrm{ant}}|\le\Delta_0, & & \\
-& |p_t-p_{t-1}|\le\Delta_t, && t\in T\setminus\{1\}, \\
-& \underline Q_w\le\sum_{t\in T_w}q_t\le\overline Q_w, && w\in W, \\
-& p_t>0,\ q_t>0, && t\in T.
+& \underbrace{q_t=D_t(p_t;\theta)}_{\text{curva de demanda}},
+&& t\in T, \\
+& \underbrace{\underline p_t\le p_t\le\overline p_t}_{\text{suporte de preço}},
+&& t\in T, \\
+& \underbrace{|p_1-p^{\mathrm{ant}}|\le\Delta_0}_{\text{transição inicial}},
+& & \\
+& \underbrace{|p_t-p_{t-1}|\le\Delta_t}_{\text{variação entre decisões}},
+&& t\in T\setminus\{1\}, \\
+& \underbrace{\underline Q_w\le\sum_{t\in T_w}q_t\le\overline Q_w}_{\text{volume da janela}},
+&& w\in W, \\
+& \underbrace{p_t>0,\ q_t>0}_{\text{positividade}},
+&& t\in T.
 \end{aligned}
 $$
 
-Em linguagem natural, escolhem-se preços positivos dentro do suporte, respeitando a estabilidade
-na entrada e ao longo do horizonte. A curva converte preços em volumes, cada janela precisa cumprir
-sua faixa de volume e a melhor solução é aquela com maior margem total prevista.
+O modelo escolhe preços positivos dentro do suporte e respeita a estabilidade na entrada e ao longo
+do horizonte. A curva converte preços em volumes, cada janela precisa cumprir sua faixa e a melhor
+solução é aquela com maior margem total prevista.
 
 ## 9. Diagnóstico de viabilidade
 
@@ -371,8 +377,8 @@ $$
 Q_w^{\min}>\overline Q_w,
 $$
 
-a formulação é necessariamente infactível. Em linguagem natural, nem a trajetória mais favorável
-ao volume consegue entrar na faixa exigida.
+a formulação é necessariamente infactível: nem a trajetória mais favorável ao volume consegue
+entrar na faixa exigida.
 
 A interseção dos envelopes com as faixas semanais é condição necessária, mas não é suficiente em
 todo problema possível, porque uma mesma trajetória deve atender simultaneamente a todas as
@@ -410,8 +416,8 @@ $$
 R(p,r)=R^*
 $$
 
-Em linguagem natural, o ganho financeiro não pode justificar uma violação maior que a estritamente
-necessária para recuperar viabilidade.
+O ganho financeiro não pode justificar uma violação maior que a estritamente necessária para
+recuperar viabilidade.
 
 ### 10.2 Relaxação apenas da transição inicial
 

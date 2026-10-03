@@ -9,6 +9,7 @@ openpyxl
 pandas
 pip
 pytest
+pymdown-extensions
 python-dotenv
 ruff
 scikit-learn
