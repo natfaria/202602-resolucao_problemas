@@ -585,160 +585,264 @@ do modelo.
 
 ### 6.1 Pergunta narrativa
 
-> Dada a curva de demanda congelada, qual sequência diária de preços produz a maior margem esperada
-> sem violar metas de volume e estabilidade comercial?
+> Por que a formulação oficial é infactível, quais restrições entram em conflito e qual é a menor
+> alteração operacional necessária para recuperar a viabilidade antes de maximizar a margem?
+
+O caso oficial, com preço inicial de 31/10/2025, variação máxima de R$ 2,00 e metas semanais, deve
+ser resolvido primeiro sem remover restrições. A infactibilidade esperada é um resultado do desafio,
+mas não encerra a análise: o notebook deve localizar suas fontes, quantificar os déficits e comparar
+formas mínimas de superá-la.
 
 ### 6.2 Contrato de entrada
 
 O notebook deve consumir apenas:
 
-- `demand_curve_champion.json`;
-- `demand_curve_uncertainty.json`;
+- `demand_curve_champion_livro.json`, produzido pelo Notebook 2.1;
+- `demand_curve_uncertainty_livro.json`, produzido pelo Notebook 2.1;
 - calendário do horizonte de duas semanas;
 - meta e tolerância semanal da aba `meta_vol_variacao_preco`;
 - variação máxima permitida entre dias consecutivos;
-- faixa de preço validada;
-- custo unitário previsto ou uma premissa definida antes do horizonte;
-- último preço conhecido antes do primeiro dia da otimização.
+- faixa de preço validada por contexto no artefato da curva;
+- histórico de custo somente até 31/10/2025;
+- último preço conhecido em 31/10/2025;
+- alíquota de imposto de 7%, informada pela equipe do desafio.
+
+O Notebook 2.1 permanece a fonte de verdade da curva. `src/modeling/demand_curve.py` deve apenas
+validar e reproduzir o artefato, incluindo compatibilidade com o contrato de hash da versão 1. O
+otimizador não pode redefinir coeficientes, suporte, *smearing* ou cenários. Se uma família completa
+de curvas for acrescentada, seus parâmetros devem ser exportados pelo Notebook 2.1 em novo artefato,
+mantendo inalterado o núcleo da curva campeã.
 
 O custo realizado do período futuro não pode ser utilizado para escolher preços. Em um backtest,
 ele só pode aparecer depois da recomendação, para uma avaliação ex post claramente identificada.
 
-### 6.3 Definições matemáticas
+### 6.3 Imposto, custo e margem
 
 Para cada dia `t` do horizonte:
 
 - variável de decisão: preço `p_t`;
 - demanda prevista: `q_t(p_t, contexto_t)`;
-- custo unitário previsto: `c_t`;
-- margem esperada: `(p_t - c_t) × q_t`.
+- custo unitário previsto: `c_t` em R$/kg;
+- alíquota sobre a receita: `tau = 0,07`;
+- margem esperada: `[(1 - tau) × p_t - c_t] × q_t`.
 
-Se uma coluna confiável de imposto ficar disponível, a função objetivo deverá descontá-la de forma
-explícita. Com a planilha atual, a medida é contribuição após custo realizado/previsto, não margem
-líquida completa.
-
-Objetivo central:
+`Custo Realizado (R$)` é o custo total do volume vendido no dia. O custo unitário histórico deve ser
+calculado como:
 
 ```text
-maximizar  soma_t [(p_t - c_t) × q_t(p_t, contexto_t)]
+custo_kg_t = custo_realizado_rs_t / volume_realizado_kg_t
 ```
+
+Para resumir uma janela, a média correta é ponderada por volume:
+
+```text
+custo_kg_ponderado = soma(custo_realizado_rs) / soma(volume_realizado_kg)
+```
+
+A janela do custo não será escolhida por conveniência. O Notebook 3 deve comparar, usando somente o
+desenvolvimento, os seguintes previsores de custo constante para as duas semanas seguintes:
+
+1. último custo unitário observado;
+2. média ponderada da última semana;
+3. média ponderada das últimas duas semanas;
+4. média ponderada das últimas quatro semanas;
+5. média ponderada expansiva;
+6. média móvel exponencial parcimoniosa.
+
+A escolha deve usar validação temporal com origem móvel: em cada corte, estimar o custo apenas com o
+passado e prever o custo ponderado agregado das duas semanas seguintes. MAE em R$/kg será a métrica
+primária; RMSE e viés serão secundários. Candidatos com MAE até 5% acima do melhor serão considerados
+equivalentes; entre eles, vencerá o mais simples, com menor viés absoluto e maior estabilidade entre
+janelas. A regra escolhida será congelada antes do acesso aos custos do holdout.
+
+Como referências, sem antecipar a seleção, o desenvolvimento apresenta aproximadamente R$ 981,22/kg
+na média ponderada completa, R$ 988,85/kg nas últimas quatro semanas, R$ 1.003,66/kg nas últimas duas
+semanas, R$ 1.004,97/kg na última semana e R$ 1.010,45/kg no último dia.
+
+Objetivo após selecionar a premissa de custo:
+
+```text
+maximizar  soma_t [((1 - 0,07) × p_t - c_t) × q_t(p_t, contexto_t)]
+```
+
+Além dos 7% centrais, executar sensibilidade com alíquotas de 0%, 5% e 10%. O caso de 0% deve ser
+descrito como margem antes de impostos, nunca como margem líquida.
+
+### 6.4 Formulação oficial estrita
+
+O horizonte oficial contém as dez datas de 03/11/2025 a 14/11/2025. O preço anterior é
+`p_0 = R$ 1.318,92/kg`, observado em 31/10/2025.
 
 Restrições obrigatórias:
 
 ```text
 meta_semana × (1 - tolerancia) <= soma_t q_t <= meta_semana × (1 + tolerancia)
 
+|p_1 - p_0| <= variacao_maxima
+
 |p_t - p_(t-1)| <= variacao_maxima
 
 preco_min_contexto <= p_t <= preco_max_contexto
 ```
 
-A restrição de variação também deve ligar o primeiro dia do horizonte ao último preço histórico ou
-operacional conhecido.
+Na instância, cada semana possui meta de 165 kg, tolerância de 30% e faixa admissível de 115,5 a
+214,5 kg. O PDF menciona 5%; a otimização principal deve usar os 30% da planilha e tratar 5% como
+sensibilidade documentada. A variação máxima é R$ 2,00 entre decisões consecutivas, inclusive na
+fronteira entre 31/10 e 03/11.
 
-### 6.4 Estratégia de solução
+O suporte de preço permanece uma restrição rígida em todas as análises. Relaxá-lo equivaleria a
+extrapolar a curva e não será aceito como estratégia de recuperação.
+
+### 6.5 Diagnóstico das fontes de infactibilidade
+
+Antes de maximizar margem, o notebook deve construir os envelopes mínimo e máximo de preços
+alcançáveis sob suporte, preço inicial e variação. Como a curva campeã é estritamente decrescente no
+suporte, esses envelopes determinam os limites de volume possíveis em cada semana.
+
+O diagnóstico preliminar da curva central indica máximos de aproximadamente 79,2 kg e 87,1 kg,
+contra o mínimo contratual de 115,5 kg. O notebook deve recalcular e registrar:
+
+- volume mínimo e máximo alcançável por semana;
+- déficit para a meta mínima, em kg e percentual;
+- dias presos ao limite de variação ou ao suporte;
+- restrições ativas e respectivas folgas;
+- efeito incremental de adicionar preço inicial, variação e meta à formulação;
+- cenário de demanda em que cada conflito ocorre.
+
+A fonte deve ser atribuída à combinação de restrições, não a uma regra isolada. Para isso, executar
+uma sequência aninhada: suporte; suporte mais preço inicial; suporte mais preço inicial e variação;
+e, por fim, todas as restrições com a meta semanal.
+
+### 6.6 Estratégias de recuperação da viabilidade
+
+Cada alternativa deve ser resolvida em duas etapas: primeiro minimizar exatamente a relaxação
+escolhida; depois fixar esse mínimo e maximizar a margem. Assim, o solver não recebe liberdade para
+relaxar uma regra além do necessário apenas para melhorar o objetivo financeiro.
+
+#### 6.6.1 Desconsiderar o preço inicial
+
+Remover somente a ligação `|p_1 - p_0| <= 2`, mantendo R$ 2,00 entre as dez decisões. Reportar o
+salto entre 31/10 e 03/11, os volumes, a margem e a consequência operacional.
+
+#### 6.6.2 Aumentar a variação entre dias
+
+Substituir o limite fixo por uma variável `Delta` e resolver `minimizar Delta` sujeito às metas,
+suporte e preço inicial. Depois, fixar o menor `Delta` viável e maximizar a margem.
+
+#### 6.6.3 Liberar apenas a transição inicial
+
+Calcular o menor `Delta_inicial` em `|p_1 - p_0| <= Delta_inicial`, preservando R$ 2,00 nos demais
+pares. Essa alternativa separa a entrada no horizonte da estabilidade dentro das duas semanas.
+
+#### 6.6.4 Relaxar meta ou tolerância
+
+Com preço inicial e R$ 2,00 mantidos, calcular separadamente:
+
+- folga mínima em kg para o limite inferior de cada semana;
+- menor meta nominal comum que torna as duas semanas viáveis;
+- menor tolerância percentual comum necessária para a meta de 165 kg.
+
+#### 6.6.5 Relaxações combinadas
+
+Construir uma fronteira de Pareto entre salto inicial, variação diária e folga de volume. Não somar
+penalidades de unidades diferentes para produzir uma escolha arbitrária. A decisão final deve
+comparar alterações operacionais transparentes, margem e exposição à incerteza.
+
+### 6.7 Estratégia numérica
 
 1. Formular inicialmente um problema não linear contínuo, pois a curva de potência é suave e o
    horizonte possui poucas variáveis.
-2. Resolver com múltiplos pontos iniciais para reduzir o risco de aceitar um ótimo local.
-3. Verificar a solução com recomputação independente do objetivo e de todas as restrições.
-4. Se o solver contínuo apresentar instabilidade, discretizar a faixa permitida de preço e resolver
+2. Executar o teste determinístico de viabilidade antes do solver de margem.
+3. Resolver cada problema com múltiplos pontos iniciais e semente fixa.
+4. Verificar a solução com recomputação independente do objetivo e de todas as restrições.
+5. Se o solver contínuo apresentar instabilidade, discretizar a faixa permitida de preço e resolver
    por busca estruturada ou programação dinâmica.
-5. Fixar tolerâncias numéricas e critérios de convergência no código.
-6. Nunca permitir que o solver ultrapasse o suporte validado da curva.
+6. Fixar tolerâncias numéricas e critérios de convergência no código.
+7. Nunca permitir que o solver ultrapasse o suporte validado da curva.
+8. Nunca gerar plano diário quando o status permanecer infactível.
 
-### 6.5 Baselines de decisão
+### 6.8 Baselines e sensibilidades
 
 Comparar a política otimizada com alternativas compreensíveis:
 
 1. manter o último preço observado;
 2. usar preço constante que tenta cumprir a meta;
-3. repetir uma política média histórica por dia da semana;
-4. ótimo sem meta semanal;
-5. ótimo com meta, mas sem limite de variação;
-6. ótimo completo com todas as restrições.
+3. ótimo sem meta semanal;
+4. ótimo sem preço inicial;
+5. ótimo sem limite de variação;
+6. ótimo após cada relaxação mínima;
+7. preços históricos do holdout, somente na avaliação ex post.
 
-Esses baselines mostram de onde vem o ganho e quanto cada restrição custa em margem.
+Variar a meta entre 80%, 90%, 100%, 110% e 120% de 165 kg; testar limites de preço de R$ 0, R$ 1,
+R$ 2, R$ 5, R$ 10 e ilimitado; e repetir as políticas para as premissas baixa, central e alta de
+custo e imposto. Políticas infactíveis devem permanecer nas tabelas com diagnóstico, não ser
+silenciosamente excluídas.
 
-### 6.6 Cenários de demanda
+### 6.9 Incerteza e famílias de curvas
 
 Resolver o problema para:
 
 - cenário central;
 - cenário conservador de volume;
 - cenário otimista de volume;
-- amostras adicionais de parâmetros ou resíduos, se o custo computacional permitir.
+- família de curvas por parâmetros bootstrap, se exportada pelo Notebook 2.1.
 
-Uma solução é mais defensável quando permanece factível em cenários plausíveis. Caso a solução
-central viole a meta no cenário conservador, o notebook deve mostrar a probabilidade ou frequência
-da violação e oferecer uma alternativa mais robusta.
+Os multiplicadores existentes representam incerteza de nível, não elasticidades diferentes. Para
+uma família completa, o Notebook 2.1 deve salvar intercepto, elasticidade, efeitos de calendário e
+*smearing* de cada réplica válida. O Notebook 3 calculará, para cada curva, a frequência de
+viabilidade, o déficit, a relaxação mínima e a margem. O otimizador não pode inventar parâmetros que
+não tenham sido produzidos pela etapa estatística.
 
-### 6.7 Análises de sensibilidade exigidas pelo desafio
+### 6.10 Validações do otimizador
 
-#### Impacto da meta semanal
+1. Todas as restrições devem ter folga e status calculados.
+2. A meta deve ser verificada separadamente por semana.
+3. A variação deve incluir a fronteira entre 31/10 e 03/11 no caso oficial.
+4. Custo e imposto devem ser recompostos linha a linha na margem.
+5. A previsão deve vir do artefato, não de coeficientes copiados.
+6. Objetivo e restrições devem ser recalculados após a solução.
+7. Diferentes pontos iniciais devem produzir solução equivalente.
+8. O problema oficial deve retornar infactível enquanto suas regras permanecerem inalteradas.
+9. Cada solução recuperada deve informar qual regra mudou e quanto mudou.
+10. O holdout não pode participar da escolha da regra de custo nem da política de preços.
 
-1. Resolver sem meta.
-2. Resolver com a meta nominal.
-3. Variar a meta em uma grade operacionalmente relevante.
-4. Mostrar margem, volume, preço médio e restrições ativas.
-5. Identificar quando a meta se torna inviável dentro do suporte de preços.
+### 6.11 Storytelling dos resultados
 
-#### Impacto da variação máxima de preço
+O notebook deve terminar com, no mínimo:
 
-1. Resolver sem limite de variação.
-2. Resolver com o limite da instância.
-3. Testar limites mais rígidos e mais flexíveis.
-4. Quantificar perda de margem e alteração da trajetória de volume.
-5. Destacar quais dias ficam presos ao limite de mudança.
-
-#### Impacto da incerteza da curva
-
-1. Comparar políticas ótimas dos três cenários de volume.
-2. Aplicar cada política aos demais cenários.
-3. Avaliar margem mínima, média e dispersão.
-4. Selecionar uma recomendação central e uma recomendação conservadora.
-
-### 6.8 Validações do otimizador
-
-1. Todas as restrições devem ter folga calculada e status de atendimento.
-2. A meta deve ser verificada por semana, não apenas no total das duas semanas.
-3. A variação deve ser validada entre todos os pares consecutivos, inclusive na fronteira inicial.
-4. A previsão deve ser recalculada a partir do artefato, não de valores copiados do notebook.
-5. O objetivo deve ser recalculado linha a linha após a solução.
-6. Diferentes pontos iniciais devem produzir a mesma solução ou soluções com objetivo equivalente.
-7. Cenários inviáveis devem gerar diagnóstico explícito, nunca uma tabela aparentemente válida.
-8. Testes automatizados devem cobrir limites de preço, metas, variação e reprodução do objetivo.
-
-### 6.9 Storytelling dos resultados
-
-O notebook deve terminar com quatro visões:
-
-1. tabela diária com preço, volume previsto, custo, margem e variação de preço;
-2. resumo semanal com meta, intervalo permitido, volume previsto e margem;
-3. gráfico da trajetória de preços e volumes ao longo das duas semanas;
-4. gráfico de sensibilidade mostrando o custo das restrições e a incerteza da demanda.
+1. auditoria do imposto e da seleção temporal da premissa de custo;
+2. tabela do problema oficial com volumes alcançáveis, déficits e restrições ativas;
+3. tabela das relaxações mínimas e da fronteira de Pareto;
+4. plano diário somente para alternativas factíveis;
+5. resumo semanal com meta, volume, margem e folgas;
+6. gráficos de trajetória, fontes de infactibilidade e custo das relaxações;
+7. matriz que aplica cada política aos cenários de demanda, custo e imposto.
 
 A conclusão deve separar claramente:
 
 - o que é consequência dos dados históricos;
 - o que é premissa operacional;
 - o que é resultado matemático do otimizador;
+- qual restrição foi relaxada em cada alternativa;
 - o que ainda precisa de validação futura.
 
-### 6.10 Entregáveis do Notebook 3
+### 6.12 Entregáveis do Notebook 3
 
-- Plano diário de preços em `data/processed/minerva_plano_precos.csv`.
-- Resultado completo da execução em JSON, com entradas, versão da curva e status das restrições.
-- Comparação com baselines.
-- Sensibilidade à meta, ao limite de variação e à incerteza da demanda.
+- Diagnóstico em `data/processed/minerva_diagnostico_infactividade.json`.
+- Plano diário das alternativas factíveis em `data/processed/minerva_plano_precos.csv`.
+- Resultado completo em `data/processed/minerva_otimizacao_resultado.json`.
+- Tabela de seleção temporal da premissa de custo.
+- Tabela de relaxações mínimas e fronteira de Pareto.
+- Comparação com baselines e cenários de demanda, custo e imposto.
 - Figuras finais em `reports/figures/`.
-- Recomendação operacional central e alternativa conservadora.
+- Recomendação operacional condicionada à alteração aceita nas regras.
 
-### 6.11 Critério de conclusão
+### 6.13 Critério de conclusão
 
-O Notebook 3 está concluído quando a sequência recomendada pode ser reproduzida apenas com os
-artefatos salvos, todas as restrições são verificadas numericamente e o impacto de cada restrição
-fica quantificado.
+O Notebook 3 está concluído quando reproduz a infactibilidade oficial, identifica suas fontes,
+calcula as menores relaxações de cada alternativa, seleciona custo sem vazamento temporal, aplica o
+imposto de 7%, gera planos apenas para problemas factíveis e permite reproduzir todos os resultados
+a partir dos artefatos salvos.
 
 ## 7. Fluxo entre os notebooks
 
@@ -763,10 +867,11 @@ Notebook 2: validação temporal e curva campeã
       v
 Notebook 3: otimização matemática
       |
-      +--> sequência diária de preços
-      +--> volumes e margens esperados
-      +--> sensibilidade às restrições
-      +--> recomendação central e conservadora
+      +--> diagnóstico das fontes de infactibilidade
+      +--> custo previsto e imposto congelados
+      +--> relaxações mínimas e fronteira de Pareto
+      +--> planos factíveis, volumes e margens esperados
+      +--> recomendação condicionada à regra alterada
 ```
 
 ## 8. Ordem de implementação
@@ -789,11 +894,15 @@ Notebook 3: otimização matemática
 
 ### Etapa 3: decisão ótima
 
-1. Definir a premissa de custo futuro e o preço inicial do horizonte.
-2. Implementar `src/optimization/price_schedule.py`.
-3. Criar testes de objetivo, metas, limites e inviabilidade.
-4. Construir o Notebook 3.
-5. Rodar sensibilidades e preparar as figuras finais.
+1. Corrigir a compatibilidade do leitor com o hash da versão 1 emitida pelo Notebook 2.1.
+2. Selecionar temporalmente a regra de previsão do custo unitário, sem usar o holdout.
+3. Congelar imposto de 7%, preço inicial e restrições da instância.
+4. Implementar os envelopes de viabilidade e `src/optimization/price_schedule.py`.
+5. Criar testes de margem, metas, suporte, preço inicial, variação e infactibilidade.
+6. Implementar as relaxações mínimas e a fronteira de Pareto.
+7. Construir o Notebook 3 e executar sensibilidades de demanda, custo e imposto.
+8. Se necessária uma família completa, promover as réplicas bootstrap do Notebook 2.1 para um
+   artefato adicional sem alterar a curva campeã.
 
 ### Etapa 4: revisão integrada
 
@@ -816,20 +925,33 @@ Notebook 3: otimização matemática
 | Transformação logarítmica | Viés ao retornar para kg | Smearing estimado somente no treino de cada ajuste |
 | Otimizador extrapolar a curva | Recomendações sem suporte | Limites de preço obrigatórios por contexto |
 | Uso de custo futuro realizado | Vazamento na decisão | Premissa de custo congelada antes do horizonte |
+| Janela de custo escolhida informalmente | Margem baseada em custo defasado ou ruidoso | Seleção temporal entre previsores simples e sensibilidade |
+| Imposto ausente na planilha | Margem superestimada | Usar 7% informado pela equipe e testar 0%, 5% e 10% |
+| Problema oficial infactível | Solver sem solução ou relaxação oculta | Diagnóstico por envelopes e relaxações mínimas em duas etapas |
+| Penalidades de unidades diferentes | Escolha arbitrária entre preço e volume | Fronteira de Pareto em vez de soma ponderada ad hoc |
+| Multiplicadores tratados como família de curvas | Incerteza de elasticidade subestimada | Exportar parâmetros bootstrap pelo Notebook 2.1 quando necessário |
 | Divergência PDF versus planilha | Restrição incorreta | Ler parâmetros da instância e registrar a divergência |
 
-## 10. Decisões que precisam ser fechadas antes do Notebook 3
+## 10. Decisões fechadas e pendências operacionais
 
-1. Qual custo unitário estará disponível antes de cada dia do horizonte?
-2. A tolerância válida é sempre a informada na planilha da instância?
-3. O imposto deve entrar na margem quando a coluna não está presente?
-4. Qual preço anterior deve limitar o primeiro dia do horizonte?
-5. Os preços podem ser contínuos ou precisam respeitar incrementos comerciais?
-6. A operação aceita uma solução que cumpre a meta no cenário central, ou exige proteção no cenário
-   conservador?
-7. Sábados e domingos farão parte de horizontes futuros, apesar de não aparecerem no holdout atual?
+Decisões já fechadas para o Notebook 3:
 
-Essas decisões não impedem os Notebooks 1 e 2, mas alteram a formulação da otimização.
+1. imposto central de 7% sobre a receita, com sensibilidades de 0%, 5% e 10%;
+2. preço inicial de R$ 1.318,92/kg em 31/10/2025;
+3. tolerância principal de 30% lida da instância e 5% como sensibilidade do texto do PDF;
+4. custo histórico calculado por `custo_realizado_rs / volume_realizado_kg`;
+5. regra de previsão do custo escolhida por validação temporal, não por janela arbitrária;
+6. problema oficial mantido estrito antes de qualquer relaxação;
+7. suporte da curva nunca relaxado.
+
+Pendências que não impedem o diagnóstico, mas condicionam a recomendação operacional final:
+
+1. preços podem ser contínuos ou precisam respeitar incrementos comerciais?
+2. qual alternativa de recuperação é comercialmente preferível: salto inicial, maior variação,
+   menor meta ou maior tolerância?
+3. a operação exige proteção no cenário conservador ou aceita uma política central com exposição
+   explícita ao risco?
+4. sábados e domingos farão parte de horizontes futuros, apesar de não aparecerem no holdout atual?
 
 ## 11. Definição de pronto do projeto analítico
 
@@ -841,14 +963,17 @@ O fluxo completo estará pronto quando:
 - a curva for escolhida por validação temporal e permanecer parcimoniosa;
 - a previsão em kg corrigir a retransformação e bloquear extrapolação;
 - a incerteza for entregue ao otimizador em cenários reproduzíveis;
-- a otimização respeitar meta, tolerância, suporte e variação diária;
-- os efeitos das duas restrições pedidas pelo desafio forem quantificados;
+- a infactibilidade oficial for reproduzida e explicada por restrições identificáveis;
+- as menores relaxações de preço e volume forem calculadas antes da maximização da margem;
+- custo e imposto forem definidos sem vazamento e submetidos a sensibilidade;
+- todo plano recomendado respeitar suporte e a formulação relaxada explicitamente declarada;
+- os efeitos da meta e da variação pedidas pelo desafio forem quantificados;
 - testes automatizados validarem os contratos principais;
 - limitações causais e de cobertura forem apresentadas sem ambiguidade.
 
 ## 12. Referências do projeto
 
-- Desafio Minerva-Unifesp-ITA, em `docs/Minerva_Unifesp_ITA.pdf`, especialmente as seções de
+- Desafio Minerva-Unifesp-ITA, em `docs/referencias/Minerva_Unifesp_ITA.pdf`, especialmente as seções de
   relação volume-preço, definição do problema, arquivo de dados e ferramenta desejada.
 - Robert L. Phillips, *Pricing and Revenue Optimization*, em
   `docs/referencias/dokumen.pub_pricing-and-revenue-optimization-second-edition-9781503614260.pdf`,
