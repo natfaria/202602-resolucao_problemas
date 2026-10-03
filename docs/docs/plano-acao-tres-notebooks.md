@@ -605,7 +605,7 @@ O notebook deve consumir apenas:
 - faixa de preço validada por contexto no artefato da curva;
 - histórico de custo somente até 31/10/2025;
 - último preço conhecido em 31/10/2025;
-- alíquota de imposto de 7%, informada pela equipe do desafio.
+- alíquota de imposto de 7%, adotada como premissa operacional do cenário-base.
 
 O Notebook 2.1 permanece a fonte de verdade da curva. `src/modeling/demand_curve.py` deve apenas
 validar e reproduzir o artefato, incluindo compatibilidade com o contrato de hash da versão 1. O
@@ -926,7 +926,7 @@ Notebook 3: otimização matemática
 | Otimizador extrapolar a curva | Recomendações sem suporte | Limites de preço obrigatórios por contexto |
 | Uso de custo futuro realizado | Vazamento na decisão | Premissa de custo congelada antes do horizonte |
 | Janela de custo escolhida informalmente | Margem baseada em custo defasado ou ruidoso | Seleção temporal entre previsores simples e sensibilidade |
-| Imposto ausente na planilha | Margem superestimada | Usar 7% informado pela equipe e testar 0%, 5% e 10% |
+| Imposto ausente na planilha | Margem superestimada | Adotar 7% como premissa operacional e testar 0%, 5% e 10% |
 | Problema oficial infactível | Solver sem solução ou relaxação oculta | Diagnóstico por envelopes e relaxações mínimas em duas etapas |
 | Penalidades de unidades diferentes | Escolha arbitrária entre preço e volume | Fronteira de Pareto em vez de soma ponderada ad hoc |
 | Multiplicadores tratados como família de curvas | Incerteza de elasticidade subestimada | Exportar parâmetros bootstrap pelo Notebook 2.1 quando necessário |
