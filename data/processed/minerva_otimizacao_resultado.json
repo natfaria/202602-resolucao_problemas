@@ -1,0 +1,278 @@
+{
+  "artifact_version": 1,
+  "model_core_sha256": "7ab845c977f33d7d1b59b12e68fa41adef083e22f6a2097e499b821dc36fb2e1",
+  "cost_selection": {
+    "method": "media_4_semanas",
+    "label": "Média ponderada — 4 semanas",
+    "forecast_cost_kg": 988.8425607921679,
+    "low_cost_kg": 988.6834057658597,
+    "high_cost_kg": 1009.3815687350475,
+    "cutoff": "2025-10-31"
+  },
+  "tax_rate": 0.07,
+  "initial_price": 1318.919594425694,
+  "official_status": "infeasible",
+  "official_validation": null,
+  "restrictions": {
+    "targets_kg": {
+      "semana_1": 165.0,
+      "semana_2": 165.0
+    },
+    "tolerance": 0.3,
+    "daily_variation": 2.0
+  },
+  "minimum_daily_variation": 16.09865625,
+  "minimum_initial_transition": 41.475609375,
+  "recommended_policy": "transicao_inicial_minima",
+  "recommendation_condition": "aceitar exceção apenas entre 31/10 e 03/11",
+  "recommended_daily": [
+    {
+      "data": "2025-11-03T00:00:00",
+      "dia_semana": "Segunda",
+      "semana": "semana_1",
+      "preco_kg": 1277.4439850506228,
+      "volume_previsto_kg": 26.237294017132534,
+      "custo_kg": 988.8425607921679,
+      "aliquota_imposto": 0.07,
+      "margem_prevista_rs": 5225.9532821989405,
+      "variacao_preco_rs": -41.475609375071144
+    },
+    {
+      "data": "2025-11-04T00:00:00",
+      "dia_semana": "Terça",
+      "semana": "semana_1",
+      "preco_kg": 1275.443985050575,
+      "volume_previsto_kg": 26.750562405161254,
+      "custo_kg": 988.8425607921679,
+      "aliquota_imposto": 0.07,
+      "margem_prevista_rs": 5278.430210885807,
+      "variacao_preco_rs": -2.0000000000477485
+    },
+    {
+      "data": "2025-11-05T00:00:00",
+      "dia_semana": "Quarta",
+      "semana": "semana_1",
+      "preco_kg": 1273.4439850506071,
+      "volume_previsto_kg": 27.274700861059106,
+      "custo_kg": 988.8425607921679,
+      "aliquota_imposto": 0.07,
+      "margem_prevista_rs": 5331.122448390376,
+      "variacao_preco_rs": -1.9999999999679403
+    },
+    {
+      "data": "2025-11-06T00:00:00",
+      "dia_semana": "Quinta",
+      "semana": "semana_1",
+      "preco_kg": 1271.4439850505246,
+      "volume_previsto_kg": 27.809957209845514,
+      "custo_kg": 988.8425607921679,
+      "aliquota_imposto": 0.07,
+      "margem_prevista_rs": 5384.017318738358,
+      "variacao_preco_rs": -2.0000000000825366
+    },
+    {
+      "data": "2025-11-07T00:00:00",
+      "dia_semana": "Sexta",
+      "semana": "semana_1",
+      "preco_kg": 1269.4439850504482,
+      "volume_previsto_kg": 7.4292090591373325,
+      "custo_kg": 988.8425607921679,
+      "aliquota_imposto": 0.07,
+      "margem_prevista_rs": 1424.4791103401606,
+      "variacao_preco_rs": -2.0000000000763976
+    },
+    {
+      "data": "2025-11-10T00:00:00",
+      "dia_semana": "Segunda",
+      "semana": "semana_2",
+      "preco_kg": 1267.4439850504496,
+      "volume_previsto_kg": 28.914845308804818,
+      "custo_kg": 988.8425607921679,
+      "aliquota_imposto": 0.07,
+      "margem_prevista_rs": 5490.360811669292,
+      "variacao_preco_rs": -1.9999999999986358
+    },
+    {
+      "data": "2025-11-11T00:00:00",
+      "dia_semana": "Terça",
+      "semana": "semana_2",
+      "preco_kg": 1265.443985050551,
+      "volume_previsto_kg": 29.4850036093649,
+      "custo_kg": 988.8425607921679,
+      "aliquota_imposto": 0.07,
+      "margem_prevista_rs": 5543.78055994737,
+      "variacao_preco_rs": -1.9999999998985913
+    },
+    {
+      "data": "2025-11-12T00:00:00",
+      "dia_semana": "Quarta",
+      "semana": "semana_2",
+      "preco_kg": 1263.4439850504878,
+      "volume_previsto_kg": 30.06733323232431,
+      "custo_kg": 988.8425607921679,
+      "aliquota_imposto": 0.07,
+      "margem_prevista_rs": 5597.345136923547,
+      "variacao_preco_rs": -2.00000000006321
+    },
+    {
+      "data": "2025-11-13T00:00:00",
+      "dia_semana": "Quinta",
+      "semana": "semana_2",
+      "preco_kg": 1261.4439850504705,
+      "volume_previsto_kg": 30.662113889321652,
+      "custo_kg": 988.8425607921679,
+      "aliquota_imposto": 0.07,
+      "margem_prevista_rs": 5651.03817757615,
+      "variacao_preco_rs": -2.0000000000172804
+    },
+    {
+      "data": "2025-11-14T00:00:00",
+      "dia_semana": "Sexta",
+      "semana": "semana_2",
+      "preco_kg": 1259.4439850503834,
+      "volume_previsto_kg": 8.192405113606313,
+      "custo_kg": 988.8425607921679,
+      "aliquota_imposto": 0.07,
+      "margem_prevista_rs": 1494.6252178022328,
+      "variacao_preco_rs": -2.000000000087084
+    }
+  ],
+  "recommended_weekly": [
+    {
+      "semana": "semana_1",
+      "volume_previsto_kg": 115.50172355233575,
+      "margem_prevista_rs": 22644.002370553644,
+      "preco_medio_kg": 1273.4439850505555,
+      "meta_kg": 165.0,
+      "limite_inferior_kg": 115.49999999999999,
+      "limite_superior_kg": 214.5
+    },
+    {
+      "semana": "semana_2",
+      "volume_previsto_kg": 127.321701153422,
+      "margem_prevista_rs": 23777.14990391859,
+      "preco_medio_kg": 1263.4439850504684,
+      "meta_kg": 165.0,
+      "limite_inferior_kg": 115.49999999999999,
+      "limite_superior_kg": 214.5
+    }
+  ],
+  "recommended_validation": {
+    "satisfied": true,
+    "support_ok": true,
+    "initial_ok": true,
+    "variation_ok": true,
+    "targets_ok": true,
+    "minimum_support_slack": 51.07559551086638,
+    "initial_change": 41.475609375071144,
+    "maximum_daily_change": 2.000000000087084,
+    "weeks": {
+      "semana_1": {
+        "volume_kg": 115.50172355233575,
+        "lower_slack_kg": 0.0017235523357612692,
+        "upper_slack_kg": 98.99827644766425,
+        "satisfied": true
+      },
+      "semana_2": {
+        "volume_kg": 127.32170115342198,
+        "lower_slack_kg": 11.821701153421998,
+        "upper_slack_kg": 87.17829884657802,
+        "satisfied": true
+      }
+    }
+  },
+  "alternatives": {
+    "sem_ligacao_inicial": {
+      "status": "optimal",
+      "total_margin_rs": 59293.58552288273,
+      "validation": {
+        "satisfied": true,
+        "support_ok": true,
+        "initial_ok": true,
+        "variation_ok": true,
+        "targets_ok": true,
+        "minimum_support_slack": 3.5181529699523253,
+        "initial_change": 107.03092687198045,
+        "maximum_daily_change": 0.0026297272836472985,
+        "weeks": {
+          "semana_1": {
+            "volume_kg": 214.49999999989237,
+            "lower_slack_kg": 98.99999999989238,
+            "upper_slack_kg": 1.0763301361293998e-10,
+            "satisfied": true
+          },
+          "semana_2": {
+            "volume_kg": 214.50000000040086,
+            "lower_slack_kg": 99.00000000040087,
+            "upper_slack_kg": -4.008597898064181e-10,
+            "satisfied": true
+          }
+        }
+      }
+    },
+    "variacao_diaria_minima": {
+      "status": "optimal",
+      "total_margin_rs": 52073.47513286777,
+      "validation": {
+        "satisfied": true,
+        "support_ok": true,
+        "initial_ok": true,
+        "variation_ok": true,
+        "targets_ok": true,
+        "minimum_support_slack": 0.546015734175171,
+        "initial_change": 16.09865624999611,
+        "maximum_daily_change": 16.09865625000316,
+        "weeks": {
+          "semana_1": {
+            "volume_kg": 115.5042127697881,
+            "lower_slack_kg": 0.004212769788111359,
+            "upper_slack_kg": 98.9957872302119,
+            "satisfied": true
+          },
+          "semana_2": {
+            "volume_kg": 214.5000000003009,
+            "lower_slack_kg": 99.00000000030091,
+            "upper_slack_kg": -3.0090063773968723e-10,
+            "satisfied": true
+          }
+        }
+      }
+    },
+    "transicao_inicial_minima": {
+      "status": "optimal",
+      "total_margin_rs": 46421.15227447224,
+      "validation": {
+        "satisfied": true,
+        "support_ok": true,
+        "initial_ok": true,
+        "variation_ok": true,
+        "targets_ok": true,
+        "minimum_support_slack": 51.07559551086638,
+        "initial_change": 41.475609375071144,
+        "maximum_daily_change": 2.000000000087084,
+        "weeks": {
+          "semana_1": {
+            "volume_kg": 115.50172355233575,
+            "lower_slack_kg": 0.0017235523357612692,
+            "upper_slack_kg": 98.99827644766425,
+            "satisfied": true
+          },
+          "semana_2": {
+            "volume_kg": 127.32170115342198,
+            "lower_slack_kg": 11.821701153421998,
+            "upper_slack_kg": 87.17829884657802,
+            "satisfied": true
+          }
+        }
+      }
+    }
+  },
+  "tables": {
+    "cost_validation": "reports/tables/03_custo_validacao_resumo.csv",
+    "relaxations": "reports/tables/03_relaxacoes_minimas.csv",
+    "pareto": "reports/tables/03_pareto_relaxacoes.csv",
+    "scenario_sensitivity": "reports/tables/03_sensibilidade_cenarios.csv",
+    "target_variation_sensitivity": "reports/tables/03_sensibilidade_meta_variacao.csv",
+    "tolerance_sensitivity": "reports/tables/03_sensibilidade_tolerancia.csv"
+  }
+}

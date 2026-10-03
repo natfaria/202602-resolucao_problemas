@@ -1,0 +1,6 @@
+alternativa,alteracao,unidade,status,margem_rs
+desconsiderar_preco_inicial,107.03092687198045,R$/kg no salto observado,optimal,59293.58552288273
+aumentar_variacao_todos_dias,16.09865625,R$/kg por transição,optimal,52073.47513286777
+liberar_apenas_transicao_inicial,41.475609375,R$/kg em 31/10→03/11,optimal,46421.15227447224
+reduzir_meta_nominal_comum,113.14503930140516,kg de nova meta máxima,viavel_no_envelope,
+aumentar_tolerancia_comum,0.5199907423576751,fração da meta,viavel_no_envelope,

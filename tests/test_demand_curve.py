@@ -1,14 +1,21 @@
 import copy
+from pathlib import Path
 
 import numpy as np
 import pytest
 
 from src.modeling.demand_curve import (
     context_for_weekday,
+    file_sha256,
+    load_artifact_bundle,
     model_core_sha256,
     predict_volume_from_artifact,
     validate_artifact,
+    validate_training_data,
+    validate_uncertainty_artifact,
 )
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture
@@ -60,6 +67,8 @@ def test_prediction_reproduces_power_equation(artifact):
 
 def test_context_and_scenario_are_applied(artifact):
     uncertainty = {
+        "artifact_version": 1,
+        "model_core_sha256": artifact["model_core_sha256"],
         "scenario_multipliers": {"conservative": 0.7, "central": 1.0, "optimistic": 1.4}
     }
     friday = predict_volume_from_artifact(artifact, 150.0, "Sexta")
@@ -106,3 +115,29 @@ def test_version_1_hash_contract_includes_formula_and_validates():
     changed["formula"] = "ln(volume) ~ 1 + ln(preco)"
     with pytest.raises(ValueError, match="hash registrado"):
         validate_artifact(changed)
+
+
+def test_uncertainty_must_belong_to_the_same_model_core(artifact):
+    uncertainty = {
+        "artifact_version": 1,
+        "model_core_sha256": artifact["model_core_sha256"],
+        "scenario_multipliers": {"central": 1.0, "conservador": 0.8, "otimista": 1.2},
+    }
+    validate_uncertainty_artifact(artifact, uncertainty)
+
+    uncertainty["model_core_sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="não pertence"):
+        validate_uncertainty_artifact(artifact, uncertainty)
+
+
+def test_real_version_1_bundle_and_training_data_are_reproducible():
+    artifact, uncertainty = load_artifact_bundle(
+        ROOT / "models/demand_curve_champion_livro.json",
+        ROOT / "models/demand_curve_uncertainty_livro.json",
+    )
+
+    assert artifact["artifact_version"] == 1
+    assert model_core_sha256(artifact) == artifact["model_core_sha256"]
+    assert uncertainty["model_core_sha256"] == artifact["model_core_sha256"]
+    training_path = validate_training_data(artifact, ROOT)
+    assert file_sha256(training_path) == artifact["training"]["data_sha256"]

@@ -1,0 +1,7 @@
+baseline,status,margem_rs
+oficial,infeasible,
+manter_preco_inicial,factível sem meta,35818.62905748162
+preco_constante_para_meta,optimal,59293.585523389345
+otimo_sem_meta,optimal,37887.70527977916
+otimo_sem_variacao,optimal,57320.35730141013
+precos_historicos_holdout_ex_post,observado depois da decisão,39107.83024455598

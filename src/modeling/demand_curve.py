@@ -106,6 +106,52 @@ def validate_artifact(artifact: Artifact) -> None:
         raise ValueError("O núcleo preditivo do artefato não corresponde ao hash registrado.")
 
 
+def validate_uncertainty_artifact(artifact: Artifact, uncertainty: Artifact) -> None:
+    """Valida que a incerteza pertence exatamente ao núcleo da curva informada."""
+    validate_artifact(artifact)
+    required = {"artifact_version", "model_core_sha256", "scenario_multipliers"}
+    missing = required - set(uncertainty)
+    if missing:
+        raise ValueError(f"Artefato de incerteza sem campos obrigatórios: {sorted(missing)}")
+    frozen_hash = str(artifact.get("model_core_sha256", model_core_sha256(artifact)))
+    if uncertainty["model_core_sha256"] != frozen_hash:
+        raise ValueError("A incerteza não pertence ao núcleo preditivo da curva informada.")
+    multipliers = uncertainty["scenario_multipliers"]
+    if float(multipliers.get("central", np.nan)) != 1.0:
+        raise ValueError("O multiplicador do cenário central precisa ser igual a 1.")
+    values = np.asarray(list(multipliers.values()), dtype=float)
+    if not values.size or not np.all(np.isfinite(values)) or np.any(values <= 0):
+        raise ValueError("Multiplicadores de cenário precisam ser finitos e positivos.")
+
+
+def load_artifact_bundle(
+    artifact_path: str | Path,
+    uncertainty_path: str | Path,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Carrega e valida conjuntamente curva e incerteza congeladas."""
+    artifact = load_artifact(artifact_path)
+    uncertainty = load_artifact(uncertainty_path)
+    validate_uncertainty_artifact(artifact, uncertainty)
+    return artifact, uncertainty
+
+
+def validate_training_data(artifact: Artifact, project_root: str | Path) -> Path:
+    """Confere a base de treino registrada no artefato e devolve seu caminho."""
+    training = artifact.get("training")
+    if not isinstance(training, Mapping):
+        raise TypeError("Artefato sem metadados estruturados da base de treino.")
+    required = {"data_file", "data_sha256"}
+    missing = required - set(training)
+    if missing:
+        raise ValueError(f"Metadados de treino sem campos: {sorted(missing)}")
+    path = Path(project_root) / str(training["data_file"])
+    if not path.is_file():
+        raise FileNotFoundError(f"Base de treino registrada não encontrada: {path}")
+    if file_sha256(path) != training["data_sha256"]:
+        raise ValueError("A base de treino não corresponde ao SHA-256 registrado no artefato.")
+    return path
+
+
 def context_for_weekday(artifact: Artifact, weekday: str) -> str:
     """Transforma o dia da semana no contexto congelado no artefato."""
     mapping = artifact["calendar"]["mapping"]
@@ -140,6 +186,8 @@ def predict_volume_from_artifact(
     uncertainty_data = (
         load_artifact(uncertainty) if isinstance(uncertainty, (str, Path)) else uncertainty
     )
+    if uncertainty_data is not None:
+        validate_uncertainty_artifact(artifact_data, uncertainty_data)
     if price <= 0:
         raise ValueError("Preço precisa ser estritamente positivo.")
 
