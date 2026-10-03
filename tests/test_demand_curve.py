@@ -84,3 +84,25 @@ def test_integrity_hash_detects_model_changes(artifact):
     changed["coefficients"]["ln_preco"] = -2.0
     with pytest.raises(ValueError, match="hash registrado"):
         validate_artifact(changed)
+
+
+def test_version_1_hash_contract_includes_formula_and_validates():
+    artifact = {
+        "artifact_version": 1,
+        "model_id": "fixture-v1",
+        "family": "power",
+        "formula": "ln(volume) ~ ln(preco)",
+        "calendar": {"baseline": "Util", "mapping": {"Segunda": "Util"}},
+        "feature_order": ["const", "ln_preco"],
+        "coefficients": {"const": 10.0, "ln_preco": -1.0},
+        "smearing_factor": 1.0,
+        "price_support": {"Util": {"min": 100.0, "max": 200.0, "n": 10}},
+    }
+    artifact["model_core_sha256"] = model_core_sha256(artifact)
+
+    validate_artifact(artifact)
+
+    changed = copy.deepcopy(artifact)
+    changed["formula"] = "ln(volume) ~ 1 + ln(preco)"
+    with pytest.raises(ValueError, match="hash registrado"):
+        validate_artifact(changed)

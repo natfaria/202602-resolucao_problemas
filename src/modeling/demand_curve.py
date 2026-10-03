@@ -39,8 +39,8 @@ def file_sha256(path: str | Path) -> str:
 
 def model_core(artifact: Artifact) -> dict[str, Any]:
     """Seleciona os campos que determinam as previsões da curva."""
-    return {
-        "artifact_version": artifact["artifact_version"],
+    version = int(artifact["artifact_version"])
+    common = {
         "model_id": artifact["model_id"],
         "family": artifact["family"],
         "calendar": artifact["calendar"],
@@ -49,6 +49,21 @@ def model_core(artifact: Artifact) -> dict[str, Any]:
         "smearing_factor": artifact["smearing_factor"],
         "price_support": artifact["price_support"],
     }
+    if version == 1:
+        # O Notebook 2.1 congelou a versão 1 antes da criação deste leitor. Seu
+        # contrato inclui a fórmula, mas não a própria versão, no núcleo.
+        remaining = {
+            key: value for key, value in common.items() if key not in {"model_id", "family"}
+        }
+        return {
+            "model_id": common["model_id"],
+            "family": common["family"],
+            "formula": artifact["formula"],
+            **remaining,
+        }
+    if version == 2:
+        return {"artifact_version": version, **common}
+    raise ValueError(f"Versão de artefato não suportada: {version!r}")
 
 
 def model_core_sha256(artifact: Artifact) -> str:
@@ -77,6 +92,11 @@ def validate_artifact(artifact: Artifact) -> None:
     missing = required - set(artifact)
     if missing:
         raise ValueError(f"Artefato sem campos obrigatórios: {sorted(missing)}")
+    version = int(artifact["artifact_version"])
+    if version not in {1, 2}:
+        raise ValueError(f"Versão de artefato não suportada: {version!r}")
+    if version == 1 and "formula" not in artifact:
+        raise ValueError("Artefato v1 sem o campo obrigatório 'formula'.")
     if artifact["family"] not in {"power", "exponential", "linear"}:
         raise ValueError(f"Família não suportada: {artifact['family']!r}")
     if set(artifact["feature_order"]) != set(artifact["coefficients"]):

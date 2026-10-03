@@ -12,6 +12,7 @@ pytest
 python-dotenv
 ruff
 scikit-learn
+scipy
 seaborn
 statsmodels
 tqdm
