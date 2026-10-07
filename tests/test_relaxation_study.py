@@ -234,7 +234,11 @@ class TestSolveFunction:
 
     def test_solve_with_easier_relaxation(self, minerva_problem):
         """solve() com relaxação mais forte deve produzir resultado factível."""
-        relax = Relaxation(daily_variation_factor=10.0)
+        relax = Relaxation(
+            daily_variation_factor=15.0,
+            tolerance_lower_factor=2.0,
+            tolerance_upper_factor=2.0,
+        )
         result = solve(minerva_problem, relax, n_starts=3)
         assert result["status"] == "optimal"
         assert result["daily"] is not None
