@@ -60,6 +60,8 @@ class PriceProblem:
     tax_rate: float = 0.07
     scenario: str = "central"
     uncertainty: Artifact | None = None
+    tolerance_lower: float | None = None
+    tolerance_upper: float | None = None
 
     def __post_init__(self) -> None:
         validate_artifact(self.artifact)
@@ -77,6 +79,11 @@ class PriceProblem:
         costs = np.asarray(self.unit_cost, dtype=float)
         if costs.ndim > 1 or (costs.size not in {1, n}) or np.any(costs <= 0):
             raise ValueError("Custo deve ser positivo, escalar ou possuir um valor por dia.")
+        # Validar tolerâncias separadas (nova funcionalidade)
+        tol_lower = self.tolerance_lower if self.tolerance_lower is not None else self.tolerance
+        tol_upper = self.tolerance_upper if self.tolerance_upper is not None else self.tolerance
+        if not 0 <= tol_lower < 1 or not 0 <= tol_upper < 1:
+            raise ValueError("Tolerâncias separadas precisam estar no intervalo [0, 1).")
 
     @property
     def n_days(self) -> int:
@@ -86,6 +93,16 @@ class PriceProblem:
     def costs(self) -> np.ndarray:
         values = np.asarray(self.unit_cost, dtype=float)
         return np.repeat(values.item(), self.n_days) if values.size == 1 else values.copy()
+
+    @property
+    def tol_lower(self) -> float:
+        """Retorna tolerância inferior (padrão = tolerance quando não especificado)."""
+        return self.tolerance_lower if self.tolerance_lower is not None else self.tolerance
+
+    @property
+    def tol_upper(self) -> float:
+        """Retorna tolerância superior (padrão = tolerance quando não especificado)."""
+        return self.tolerance_upper if self.tolerance_upper is not None else self.tolerance
 
 
 def build_horizon(start: str | pd.Timestamp = "2025-11-03", periods: int = 10) -> pd.DataFrame:
@@ -168,7 +185,7 @@ def _cost_candidates(history: pd.DataFrame, cutoff: pd.Timestamp) -> dict[str, f
         ),
     }
     for weeks in (1, 2, 4):
-        window = past.loc[past["data"] > cutoff - pd.Timedelta(weeks=weeks)]
+        window = past.loc[past["data"] > cutoff - pd.Timedelta(days=7*weeks)]
         candidates[f"media_{weeks}_semana" if weeks == 1 else f"media_{weeks}_semanas"] = (
             _weighted_cost(window)
         )
@@ -189,8 +206,8 @@ def validate_cost_forecasts(
     data = development.loc[:, sorted(required)].copy()
     data["data"] = pd.to_datetime(data["data"])
     data = data.sort_values("data")
-    start = data["data"].min() + pd.Timedelta(days=minimum_history_days)
-    last_cutoff = data["data"].max() - pd.Timedelta(days=horizon_days)
+    start = data["data"].min() + pd.Timedelta(days=int(minimum_history_days))
+    last_cutoff = data["data"].max() - pd.Timedelta(days=int(horizon_days))
     cutoffs = data.loc[
         (data["data"].dt.weekday == 4)
         & (data["data"] >= start)
@@ -201,7 +218,7 @@ def validate_cost_forecasts(
     for cutoff in cutoffs:
         future = data.loc[
             (data["data"] > cutoff)
-            & (data["data"] <= cutoff + pd.Timedelta(days=horizon_days))
+            & (data["data"] <= cutoff + pd.Timedelta(days=int(horizon_days)))
         ]
         if future.empty:
             continue
@@ -400,8 +417,8 @@ def diagnose_feasibility(
     weeks: dict[str, dict[str, float | bool]] = {}
     viable = True
     for week, target in problem.targets.items():
-        lower = target * (1.0 - problem.tolerance)
-        upper = target * (1.0 + problem.tolerance)
+        lower = target * (1.0 - problem.tol_lower)
+        upper = target * (1.0 + problem.tol_upper)
         shortage = max(lower - maximum[week], 0.0)
         excess = max(minimum[week] - upper, 0.0)
         week_viable = shortage <= 1e-7 and excess <= 1e-7
@@ -485,8 +502,8 @@ def validate_prices(
     week_checks = {}
     target_ok = True
     for week, target in problem.targets.items():
-        lower = target * (1.0 - problem.tolerance)
-        upper = target * (1.0 + problem.tolerance)
+        lower = target * (1.0 - problem.tol_lower)
+        upper = target * (1.0 + problem.tol_upper)
         lower_slack = weekly[week] - lower
         upper_slack = upper - weekly[week]
         target_ok = target_ok and lower_slack >= -tolerance and upper_slack >= -tolerance
@@ -530,8 +547,8 @@ def _nonlinear_constraints(
     if enforce_targets:
         for week, target in problem.targets.items():
             mask = np.array(problem.weeks) == week
-            lower = target * (1.0 - problem.tolerance)
-            upper = target * (1.0 + problem.tolerance)
+            lower = target * (1.0 - problem.tol_lower)
+            upper = target * (1.0 + problem.tol_upper)
             constraints.extend(
                 [
                     {

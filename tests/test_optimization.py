@@ -97,3 +97,45 @@ def test_volume_relaxations_match_official_envelope(minerva_problem):
     assert relaxations["weekly_shortage_kg"]["semana_2"] == pytest.approx(28.4496, abs=1e-3)
     assert relaxations["maximum_common_target_kg"] == pytest.approx(113.1450, abs=1e-3)
     assert relaxations["minimum_common_tolerance"] == pytest.approx(0.519991, abs=1e-5)
+
+
+# Etapa 0: Testes de regressão para valores de referência
+from src.optimization.price_schedule import minimum_relaxation
+
+
+def test_daily_variation_minimum_is_reproducible(minerva_problem):
+    """Δ diário mínimo deve ser reproduzível para detectar regressões."""
+    problem, _ = minerva_problem
+    result = minimum_relaxation(problem, kind="daily_variation")
+
+    assert result["status"] == "optimal"
+    assert result["minimum"] == pytest.approx(16.09866, abs=0.01)
+    assert result["solution"]["total_margin_rs"] == pytest.approx(52073, abs=1)
+
+
+def test_initial_transition_minimum_is_reproducible(minerva_problem):
+    """Salto inicial mínimo deve ser reproduzível para detectar regressões."""
+    problem, _ = minerva_problem
+    result = minimum_relaxation(problem, kind="initial_transition")
+
+    assert result["status"] == "optimal"
+    assert result["minimum"] == pytest.approx(41.47561, abs=0.01)
+    assert result["solution"]["total_margin_rs"] == pytest.approx(46421, abs=1)
+
+
+def test_removing_all_initial_constraints_reproduces_reference(minerva_problem):
+    """Sem ligação inicial e sem meta variação fornece margem de ~R$ 59.294."""
+    problem, _ = minerva_problem
+    result = optimize_prices(problem, enforce_initial=False)
+
+    assert result["status"] == "optimal"
+    assert result["total_margin_rs"] == pytest.approx(59294, abs=1)
+
+
+def test_removing_all_volume_targets_reproduces_reference(minerva_problem):
+    """Sem meta de volume fornece margem de ~R$ 37.888."""
+    problem, _ = minerva_problem
+    result = optimize_prices(problem, enforce_targets=False)
+
+    assert result["status"] == "optimal"
+    assert result["total_margin_rs"] == pytest.approx(37888, abs=1)
