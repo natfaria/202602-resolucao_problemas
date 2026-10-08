@@ -62,6 +62,8 @@ class PriceProblem:
     uncertainty: Artifact | None = None
     tolerance_lower: float | None = None
     tolerance_upper: float | None = None
+    initial_variation: float | None = None
+    day_rule: str = "decision"
 
     def __post_init__(self) -> None:
         validate_artifact(self.artifact)
@@ -84,6 +86,13 @@ class PriceProblem:
         tol_upper = self.tolerance_upper if self.tolerance_upper is not None else self.tolerance
         if not 0 <= tol_lower < 1 or not 0 <= tol_upper < 1:
             raise ValueError("Tolerâncias separadas precisam estar no intervalo [0, 1).")
+        # Validar initial_variation
+        init_var = self.initial_variation if self.initial_variation is not None else self.daily_variation
+        if init_var < 0:
+            raise ValueError("initial_variation não pode ser negativa.")
+        # Validar day_rule
+        if self.day_rule not in ("decision", "calendar"):
+            raise ValueError("day_rule deve ser 'decision' ou 'calendar'.")
 
     @property
     def n_days(self) -> int:
@@ -103,6 +112,11 @@ class PriceProblem:
     def tol_upper(self) -> float:
         """Retorna tolerância superior (padrão = tolerance quando não especificado)."""
         return self.tolerance_upper if self.tolerance_upper is not None else self.tolerance
+
+    @property
+    def init_var(self) -> float:
+        """Retorna variação inicial (padrão = daily_variation quando não especificado)."""
+        return self.initial_variation if self.initial_variation is not None else self.daily_variation
 
 
 def build_horizon(start: str | pd.Timestamp = "2025-11-03", periods: int = 10) -> pd.DataFrame:
@@ -334,6 +348,11 @@ def _path_matrices(
     initial_delta: float | None,
     daily_delta: float | None,
 ) -> tuple[np.ndarray | None, np.ndarray | None]:
+    """Monta restrições lineares de variação de preço.
+
+    No modo 'decision' (padrão), usa daily_delta para todas as transições.
+    No modo 'calendar', multiplica daily_delta pelo número de dias corridos entre decisões.
+    """
     rows: list[np.ndarray] = []
     limits: list[float] = []
     n = problem.n_days
@@ -350,7 +369,18 @@ def _path_matrices(
             row[index] = 1.0
             row[index - 1] = -1.0
             rows.extend([row, -row])
-            limits.extend([daily_delta, daily_delta])
+
+            # Calcular limite de variação para esta transição
+            if problem.day_rule == "calendar":
+                # Número de dias corridos entre as duas datas de decisão
+                days_between = (problem.dates[index] - problem.dates[index - 1]).days
+                transition_limit = daily_delta * max(1, days_between)
+            else:
+                # Modo "decision": usa daily_delta direto
+                transition_limit = daily_delta
+
+            limits.extend([transition_limit, transition_limit])
+
     if not rows:
         return None, None
     return np.vstack(rows), np.asarray(limits)

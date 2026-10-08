@@ -88,6 +88,12 @@ def apply_relaxation(problem: PriceProblem, relaxation: Relaxation) -> PriceProb
         for week, target in problem.targets.items()
     }
 
+    # Variação inicial (R2) é independente de variação diária (R1)
+    # Aplicamos o fator de relaxação ao valor nominal init_var, não ao daily_variation
+    new_initial_variation = (
+        problem.init_var * relaxation.initial_transition_factor
+    )
+
     return PriceProblem(
         artifact=problem.artifact,
         dates=problem.dates,
@@ -103,6 +109,9 @@ def apply_relaxation(problem: PriceProblem, relaxation: Relaxation) -> PriceProb
         uncertainty=problem.uncertainty,
         tolerance_lower=tolerance_lower if tolerance_lower != problem.tolerance else None,
         tolerance_upper=tolerance_upper if tolerance_upper != problem.tolerance else None,
+        # Sempre armazenar initial_variation explicitamente para evitar fallback
+        initial_variation=new_initial_variation,
+        day_rule=problem.day_rule,
     )
 
 
@@ -182,6 +191,20 @@ def _multistart_optimization(
     )
     bounds = price_bounds(problem)
 
+    # Primeiro, verificar quais inícios são viáveis (antes de otimizar)
+    initial_feasibility = []
+    for i, start in enumerate(starts):
+        checks = validate_prices(
+            problem,
+            start,
+            initial_delta=initial_delta,
+            daily_delta=daily_delta,
+            enforce_targets=enforce_targets,
+        )
+        initial_feasibility.append(checks["satisfied"])
+
+    # Depois, otimizar cada início
+    n_converged = 0
     for i, start in enumerate(starts):
         result = minimize(
             lambda prices: -float(margin_vector(problem, prices).sum()),
@@ -202,17 +225,21 @@ def _multistart_optimization(
 
         total_margin = float(margin_vector(problem, result.x).sum())
         convergence[f"start_{i}"] = {
+            "initial_feasible": initial_feasibility[i],
             "margin_rs": total_margin,
             "satisfied": checks["satisfied"],
         }
 
         if checks["satisfied"]:
+            n_converged += 1
             candidates.append((total_margin, result, checks))
 
     return {
         "candidates": candidates,
         "convergence": convergence,
         "feasible": len(candidates) > 0,
+        "n_converged": n_converged,
+        "n_starts": len(starts),
     }
 
 
@@ -252,13 +279,8 @@ def solve(
     relaxed_problem = apply_relaxation(problem, relaxation)
 
     # Executar diagnóstico
-    # R2 (salto inicial) é independente de R1 (variação diária)
-    initial_delta = (
-        problem.daily_variation * relaxation.initial_transition_factor
-        if enforce_initial
-        else None
-    )
-    # R1 (variação diária)
+    # R2 (salto inicial) e R1 (variação diária) são independentes
+    initial_delta = relaxed_problem.init_var if enforce_initial else None
     daily_delta = relaxed_problem.daily_variation if enforce_variation else None
 
     diagnostic = diagnose_feasibility(
@@ -358,6 +380,11 @@ def solve(
         "total_margin_rs": total_margin,
         "diagnostics": diagnostic,
         "convergence": result["convergence"],
+        "convergence_summary": {
+            "n_starts": result["n_starts"],
+            "n_converged": result["n_converged"],
+            "convergence_rate": result["n_converged"] / result["n_starts"] if result["n_starts"] > 0 else 0.0,
+        },
         "relaxation_applied": relaxation,
         "slacks": slacks,
         "active_constraints": active_constraints,

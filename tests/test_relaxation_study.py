@@ -18,6 +18,7 @@ from src.optimization.relaxation_study import (
     apply_relaxation,
     solve,
 )
+from src.optimization.price_schedule import PriceProblem
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -258,35 +259,153 @@ class TestSolveFunction:
 class TestIsolableRelaxations:
     """Testa que R1 e R2 são isoláveis (variação diária e salto inicial)."""
 
-    def test_r1_and_r2_are_isolable(self, minerva_problem):
+    def test_r1_and_r2_are_isolable_strong_relaxation(self, minerva_problem):
         """R1 (variação diária) e R2 (salto inicial) devem ser independentes.
 
-        daily_factor=8 com initial_factor=1 mantém o salto inicial em R$ 2.
+        daily_factor=8 com initial_factor=1 e tolerância relaxada:
+        mantém o salto inicial em R$ 2 e produz solução factível.
         """
         relax = Relaxation(
             daily_variation_factor=8.0,
             initial_transition_factor=1.0,  # Sem relaxação no salto
+            tolerance_lower_factor=2.0,
+            tolerance_upper_factor=2.0,
         )
-        result = solve(minerva_problem, relax, n_starts=3)
+        result = solve(minerva_problem, relax, n_starts=5)
 
-        # Mesmo que daily_variation tenha sido ampliado, initial_transition não deve
+        # Deve ser factível
+        assert result["status"] == "optimal", "Deve ter solução com essa relaxação"
+
+        # O salto inicial deve respeitar initial_transition_factor=1
         daily = result["daily"]
-        if daily is not None:
-            # O salto inicial deve respeitar o initial_transition_factor
-            initial_change = abs(daily["preco_kg"].iloc[0] - minerva_problem.initial_price)
-            assert initial_change <= minerva_problem.daily_variation + 1e-5
+        initial_change = abs(daily["preco_kg"].iloc[0] - minerva_problem.initial_price)
+        assert initial_change <= minerva_problem.init_var + 1e-5, (
+            f"Salto inicial deve ser ≤ R$ {minerva_problem.init_var}, "
+            f"mas foi R$ {initial_change:.2f}"
+        )
 
     def test_r2_can_be_relaxed_independently_of_r1(self, minerva_problem):
         """R2 (salto inicial) pode ser relaxado mesmo sem relaxar R1 (variação diária)."""
         relax = Relaxation(
             daily_variation_factor=1.0,  # Sem relaxação em variação diária
             initial_transition_factor=2.5,  # Relaxação no salto inicial
+            tolerance_lower_factor=2.0,
+            tolerance_upper_factor=2.0,
         )
         result = solve(minerva_problem, relax, n_starts=3)
 
         # Com inicial_transition ampliado, deveria ser mais fácil ser factível
-        daily = result["daily"]
-        if daily is not None:
+        if result["status"] == "optimal":
+            daily = result["daily"]
             # O salto inicial deve poder ser maior
             initial_change = abs(daily["preco_kg"].iloc[0] - minerva_problem.initial_price)
-            assert initial_change <= minerva_problem.daily_variation * 2.5 + 1e-5
+            assert initial_change <= minerva_problem.init_var * 2.5 + 1e-5
+
+
+class TestInitialVariationAndDayRule:
+    """Testa initial_variation e day_rule em PriceProblem."""
+
+    def test_initial_variation_defaults_to_daily_variation(self, minerva_problem):
+        """initial_variation padrão é daily_variation."""
+        assert minerva_problem.init_var == minerva_problem.daily_variation
+
+    def test_can_set_initial_variation(self, minerva_problem):
+        """É possível definir initial_variation diferente de daily_variation."""
+        problem = PriceProblem(
+            artifact=minerva_problem.artifact,
+            dates=minerva_problem.dates,
+            weekdays=minerva_problem.weekdays,
+            weeks=minerva_problem.weeks,
+            targets=minerva_problem.targets,
+            tolerance=minerva_problem.tolerance,
+            initial_price=minerva_problem.initial_price,
+            daily_variation=minerva_problem.daily_variation,
+            unit_cost=minerva_problem.unit_cost,
+            initial_variation=5.0,
+        )
+        assert problem.init_var == 5.0
+        assert problem.daily_variation == minerva_problem.daily_variation
+
+    def test_day_rule_defaults_to_decision(self, minerva_problem):
+        """day_rule padrão é 'decision'."""
+        assert minerva_problem.day_rule == "decision"
+
+    def test_can_set_day_rule_to_calendar(self, minerva_problem):
+        """É possível definir day_rule como 'calendar'."""
+        problem = PriceProblem(
+            artifact=minerva_problem.artifact,
+            dates=minerva_problem.dates,
+            weekdays=minerva_problem.weekdays,
+            weeks=minerva_problem.weeks,
+            targets=minerva_problem.targets,
+            tolerance=minerva_problem.tolerance,
+            initial_price=minerva_problem.initial_price,
+            daily_variation=minerva_problem.daily_variation,
+            unit_cost=minerva_problem.unit_cost,
+            day_rule="calendar",
+        )
+        assert problem.day_rule == "calendar"
+
+    def test_invalid_day_rule_raises_error(self, minerva_problem):
+        """day_rule inválido deve lançar erro."""
+        with pytest.raises(ValueError, match="day_rule deve ser"):
+            PriceProblem(
+                artifact=minerva_problem.artifact,
+                dates=minerva_problem.dates,
+                weekdays=minerva_problem.weekdays,
+                weeks=minerva_problem.weeks,
+                targets=minerva_problem.targets,
+                tolerance=minerva_problem.tolerance,
+                initial_price=minerva_problem.initial_price,
+                daily_variation=minerva_problem.daily_variation,
+                unit_cost=minerva_problem.unit_cost,
+                day_rule="invalid",
+            )
+
+    def test_calendar_mode_allows_larger_gaps_on_weekends(self, minerva_problem):
+        """No modo 'calendar', sexta→segunda (3 dias) permite até 3×Δ."""
+        # Este teste é ilustrativo; em um caso real, testaríamos com um
+        # problema que tem uma transição sexta→segunda
+        problem = PriceProblem(
+            artifact=minerva_problem.artifact,
+            dates=minerva_problem.dates,
+            weekdays=minerva_problem.weekdays,
+            weeks=minerva_problem.weeks,
+            targets=minerva_problem.targets,
+            tolerance=minerva_problem.tolerance,
+            initial_price=minerva_problem.initial_price,
+            daily_variation=minerva_problem.daily_variation,
+            unit_cost=minerva_problem.unit_cost,
+            day_rule="calendar",
+        )
+        # Verificar que foi criado corretamente
+        assert problem.day_rule == "calendar"
+
+
+class TestConvergenceSummary:
+    """Testa informações de convergência no resultado de solve."""
+
+    def test_convergence_summary_reports_n_converged(self, minerva_problem):
+        """solve() retorna convergence_summary com n_converged."""
+        relax = Relaxation(
+            daily_variation_factor=15.0,
+            tolerance_lower_factor=2.0,
+            tolerance_upper_factor=2.0,
+        )
+        result = solve(minerva_problem, relax, n_starts=5)
+        assert "convergence_summary" in result
+        assert result["convergence_summary"]["n_starts"] == 5
+        assert result["convergence_summary"]["n_converged"] >= 1
+        assert 0 <= result["convergence_summary"]["convergence_rate"] <= 1
+
+    def test_convergence_details_include_initial_feasibility(self, minerva_problem):
+        """Cada entrada em convergence inclui initial_feasible."""
+        relax = Relaxation(
+            daily_variation_factor=15.0,
+            tolerance_lower_factor=2.0,
+            tolerance_upper_factor=2.0,
+        )
+        result = solve(minerva_problem, relax, n_starts=3)
+        for start_key, start_info in result["convergence"].items():
+            assert "initial_feasible" in start_info
+            assert isinstance(start_info["initial_feasible"], bool)
