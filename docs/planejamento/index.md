@@ -12,6 +12,8 @@ O roteiro metodológico e técnico está documentado em
 A formulação genérica da etapa de decisão está em
 [Modelo matemático para otimização de preços](modelo-matematico-otimizacao-precos.md).
 
+A narrativa dos resultados preliminares, das hipóteses de calendário e da seleção do modelo de regressão está em [Storytelling — curva de demanda, modelo 2.0](storytelling/curva-de-demanda-modelo-2-0.md).
+
 ## Commands
 
 The Makefile contains the central entry points for common tasks related to this project.
