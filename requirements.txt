@@ -1,4 +1,5 @@
 ipython
+gurobipy>=13.0,<14.0
 jupyterlab
 loguru
 matplotlib
