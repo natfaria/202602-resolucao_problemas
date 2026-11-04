@@ -1,0 +1,5 @@
+Diagnóstico,Resultado
+Breusch-Pagan p-valor,0.01749081857772587
+Durbin-Watson,1.8281816379561113
+Ljung-Box p-valor lag 1,0.5138612952131161
+Ljung-Box p-valor lag 5,0.9428361538791248
