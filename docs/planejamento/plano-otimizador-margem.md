@@ -1,340 +1,172 @@
 # Plano do otimizador de margem
 
-Este documento substitui, para o otimizador, os planos anteriores da pasta `docs`. O notebook
-`3.0-minerva-otimizacao-precos.ipynb` é mantido como está e não é base para a nova versão.
+## 1. Resultado esperado
 
-## Objetivo
+Produzir uma análise reproduzível que escolha os dez preços diários de `Produto_A` para 03/11 a
+14/11/2025, maximize a margem de contribuição prevista e mostre o efeito das regras de volume,
+estabilidade, ligação inicial e suporte de preço. Os resultados devem distinguir as condições
+observadas das hipóteses usadas em cada simulação.
 
-Definir o preço diário de um SKU nas duas semanas do planejamento (10 dias úteis, de 03/11 a
-14/11/2025) que **maximiza a margem total prevista**, respeitando:
+O desenvolvimento contém somente informações até 31/10/2025. O preditivo permanece congelado em
+`models/preditivo/curva_demanda.json`. Os dados realizados de novembro são usados apenas depois
+da definição das políticas, para comparação descritiva e avaliação preditiva.
 
-- o volume semanal mínimo e máximo, definido pela meta e sua tolerância;
-- a variação máxima de preço entre dias consecutivos;
-- a curva de demanda escolhida nos notebooks 2.0 e 2.0.1.
+## 2. Entradas do problema
 
-Como a meta é inviável com as regras atuais, o otimizador também precisa mostrar **quanto negociar
-de cada restrição** e quanto de margem cada negociação libera.
+| Entrada | Regra |
+|---|---|
+| Demanda | Curva de potência, calendário, smearing e suporte lidos do artefato |
+| Integridade | Conferir hash do núcleo da curva e da base de treino registrada |
+| Preço anterior | Receita/volume do último dia de treino: R$ 1.318,919594425694/kg |
+| Custo unitário | Custo/volume do último dia de treino: R$ 1.010,4468382320078/kg |
+| Custo no horizonte | Mesmo custo unitário nos dez dias |
+| Imposto | 7% sobre a receita, hipótese explícita diante da ausência da coluna na fonte |
+| Meta semanal | 165 kg em cada uma das duas semanas |
+| Tolerância | 30% na análise principal; 5% na sensibilidade |
+| Variação interna | R$ 2/kg entre decisões consecutivas |
+| Ligação inicial | R$ 2/kg entre o preço anterior e a primeira decisão |
+| Preço | Contínuo, dentro do suporte por contexto quando essa regra estiver ativa |
 
-## Visão geral
+O custo é uma premissa definida pelo último dia de treino, e não um método escolhido por
+comparação de previsores. Não se utiliza custo realizado em novembro para selecionar preços.
+Os valores são calculados a partir dos dados, sem copiar coeficientes arredondados ou retirar a
+correção da retransformação da demanda.
 
-| Etapa | Entrega | Para que serve |
+## 3. Acréscimo ao EDA: faixas de preço
+
+A relação preço-volume deve incluir uma análise por faixas de **R$ 25/kg**, usando apenas o
+conjunto de desenvolvimento. A finalidade é reconhecer dispersão, cobertura e hipóteses; não é
+selecionar automaticamente uma nova curva ou identificar efeito causal.
+
+A análise deve apresentar:
+
+- os pontos individuais de preço e volume;
+- quantidade de observações por faixa;
+- volume médio, mediano e intervalo interquartil;
+- decomposição por calendário, sem impor agrupamentos definitivos ao EDA;
+- cobertura temporal de cada faixa, para reconhecer concentração em semanas ou meses;
+- indicação de faixas e recortes com poucas observações.
+
+A interpretação deve distinguir associação agregada, composição de calendário e concentração
+em períodos específicos. Uma faixa com volume médio alto e pouca cobertura não deve ser
+interpretada como evidência suficiente de um regime de demanda. O acréscimo preserva os dados
+canônicos e o preditivo congelado.
+
+## 4. Formulação e execução
+
+A formulação está descrita em `modelo-matematico-otimizacao-precos.md`. O objetivo soma a receita
+líquida de imposto menos o custo do volume previsto. A igualdade com a curva de demanda impede
+que o volume seja escolhido independentemente do preço.
+
+A implementação usa `Scenario` e `solve_scenario`, de `src/optimization/gurobi_solver.py`, com o
+contrato de entradas `PriceProblem`. A normalização $u=p/1300$ e a representação exata da receita
+em função de volume melhoram a escala numérica. O modelo é contínuo e usa restrições não lineares
+nativas; não depende de uma grade de preços.
+
+A execução deve:
+
+1. carregar e validar somente as entradas anteriores ao horizonte;
+2. documentar objetivo, restrições e premissas antes dos resultados;
+3. resolver o cenário com todas as regras ativas;
+4. calcular os limites de volume alcançáveis para explicar eventual inviabilidade;
+5. executar os cenários de relaxação e as sensibilidades;
+6. recalcular cada solução fora do solver;
+7. congelar os planos, parâmetros e resultados;
+8. carregar o teste apenas para a comparação final.
+
+## 5. Matriz principal de relaxações
+
+Quatro grupos são tratados de forma independente:
+
+| Grupo | Regra mantida | Regra removida |
 |---|---|---|
-| 1. Modelo matemático | Formulação completa, a versão final do modelo | Base do relatório e referência para o código |
-| 2. Implementação | Três notebooks, um por versão incremental | Resolver o modelo e produzir os resultados |
-| 3. Análise e relatório | Recomendação, figuras e tabelas finais | Responder às perguntas do desafio |
+| Variação interna | Mudança de até R$ 2 entre dias do horizonte | Sem limite interno |
+| Metas semanais | Faixa mínima e máxima em cada semana | Sem ambas as metas |
+| Ligação inicial | Primeiro preço a até R$ 2 do preço anterior | Primeiro preço livre dessa ligação |
+| Suporte observado | Faixa de preços do contexto | Domínio técnico de R$ 800 a R$ 2.000/kg |
 
-O modelo da etapa 1 é escrito completo desde o início. A implementação começa por uma versão
-básica e acrescenta partes do mesmo modelo, sem mudar a formulação.
+As combinações geram **16 cenários**, incluindo:
 
----
+- relaxar somente a variação interna;
+- relaxar a variação interna e as metas;
+- combinar essas condições com a retirada da ligação inicial;
+- repetir as combinações com extrapolação do suporte observado;
+- manter todas as regras e remover todas as quatro regras como referências de comparação.
 
-## Etapa 1 — Modelo matemático
+A retirada da variação interna não remove a primeira ligação. O preço anterior observado não é
+alterado silenciosamente para obter uma solução factível. As tabelas mostram quais regras estão
+ativas e reportam os volumes em relação às faixas originais, mesmo quando as metas são removidas.
 
-### 1.1 Descrição em texto
+Comparações de margem devem usar o mesmo custo, imposto e curva. A diferença entre o melhor e
+o pior plano factível não é apresentada como ganho sobre a operação histórica.
 
-Para cada dia do horizonte, escolhe-se um preço. A curva de demanda transforma esse preço em volume
-previsto. A margem do dia é a receita líquida de imposto menos o custo do volume vendido. O modelo
-escolhe a sequência de preços com a maior soma de margens, desde que:
+## 6. Preço inicial e tolerância
 
-1. o volume de cada semana fique entre o mínimo e o máximo da meta;
-2. o preço de um dia não se afaste mais que o limite permitido do preço do dia anterior;
-3. o primeiro preço não se afaste mais que o limite permitido do último preço praticado;
-4. nenhum preço saia da faixa observada no histórico para aquele tipo de dia.
+A análise do preço inicial considera quatro condições:
 
-O volume não é uma decisão: é consequência do preço.
+$$
+p^0\in\{1200,1250,1300,1318{,}919594425694\}\ \text{R\$/kg}.
+$$
 
-### 1.2 Conjuntos
+A ligação inicial permanece ativa nessa análise. Cada valor é combinado com as duas condições de
+variação interna, metas e suporte, totalizando **32 cenários**. Os valores hipotéticos são
+identificados como tais; o valor observado continua sendo a referência do problema-base.
 
-| Símbolo | Significado | Valor no caso |
-|---|---|---|
-| $T$ | Dias do horizonte, em ordem | 10 dias úteis |
-| $W$ | Semanas | 2 |
-| $T_w$ | Dias da semana $w$ | 5 dias cada |
-| $c(t)$ | Contexto de calendário do dia $t$ | segunda a quinta ou sexta |
+A sensibilidade da tolerância compara a faixa principal de 30% com a faixa de 5%, mantendo os
+outros parâmetros explícitos. A análise deve mostrar se o efeito financeiro vem de permitir menos
+volume, mais volume ou recuperar a viabilidade; aumentar a tolerância altera os dois lados da faixa.
 
-Sexta-feira e a segunda-feira seguinte são dias consecutivos para a regra de variação.
+## 7. Extrapolação e suporte estatístico
 
-### 1.3 Parâmetros
+Nos cenários de extrapolação, o domínio R$ 800–2.000/kg substitui somente os limites operacionais
+de preço da otimização. O suporte original e o hash do artefato não são modificados.
 
-| Símbolo | Significado | Valor base | Origem |
-|---|---|---|---|
-| $p^{ant}$ | Último preço praticado | R\$ 1.318,92 | 31/10/2025, desenvolvimento |
-| $c$ | Custo por kg | R\$ 1.004,97 | Média ponderada da última semana do desenvolvimento, melhor estimativa disponível antes do horizonte |
-| $\tau$ | Imposto sobre a receita | 7% | Definição do projeto |
-| $M_w$ | Meta semanal | 165 kg | Arquivo de restrições da instância |
-| $\varepsilon^-, \varepsilon^+$ | Tolerância abaixo e acima da meta | 30% (base) e 5% (sensibilidade) | Instância e enunciado |
-| $\Delta_t$ | Variação máxima entre o dia $t$ e o dia anterior; para $t = 1$, o dia anterior é $p^{ant}$ (âncora) | R\$ 2,00 em todos os dias | Instância; a âncora vale |
-| $\underline p_{c}, \overline p_{c}$ | Faixa de preço observada por contexto | seg–qui: 1.201,63 a 1.352,42; sexta: 1.208,37 a 1.365,49 | Artefato da curva |
-| $\beta$ | Elasticidade-preço | −12,3647 | Curva P3 |
-| $A_{c}$ | Nível de demanda do contexto, já com smearing | calculado do artefato | Curva P3 |
+Os resultados devem informar quantos dias estão fora do suporte e marcar essas observações nos
+planos e gráficos. Os limites técnicos são usados para manter um problema finito e positivo;
+não significam que a regressão tenha sido validada nessa faixa. Eventual solução na fronteira
+técnica precisa ser identificada. Curvas e pontos extrapolados são simulações condicionais.
 
-Limites semanais:
+## 8. Gráfico de curva, plano e realizado
 
-$$\underline Q_w = M_w(1-\varepsilon^-) \qquad \overline Q_w = M_w(1+\varepsilon^+)$$
+O plano usado na comparação é definido antes de consultar o teste: **retirar a ligação inicial e
+manter a variação interna, as metas semanais e o suporte observado**. Sua apresentação é
+condicionada a essa alteração operacional. Se não existir uma solução validada desse cenário,
+não se substitui o plano por outro escolhido com base nos resultados reais.
 
-Com 30%: de 115,5 a 214,5 kg. Com 5%: de 156,75 a 173,25 kg.
+A figura deve ter **duas linhas e cinco colunas**, representando os dez dias do horizonte. Cada
+painel deve conter:
 
-### 1.4 Curva de demanda
+- a curva preditiva correspondente ao calendário daquele dia;
+- o ponto do preço escolhido e do volume previsto pelo otimizador;
+- o ponto real de teste: preço observado por receita/volume e volume realizado;
+- data, semana, eixos em R$/kg e kg/dia, e legenda;
+- trechos tracejados para eventual extensão da curva fora do suporte.
 
-$$q_t(p) = A_{c(t)}\, p^{\beta}, \qquad A_{c} = SF\cdot e^{\beta_0 + \gamma_{c}}$$
+Essa disposição mantém visíveis os dez dias mesmo quando vários preços ótimos coincidem. O
+ponto otimizado pertence à curva por construção. A posição do ponto real permite avaliar a
+previsão nos preços observados; não mede o volume contrafactual nos preços recomendados.
 
-É a curva P3 do notebook 2.0, com elasticidade única, um nível por contexto e o fator de smearing
-$SF = 1{,}1226$. O otimizador não reestima nenhum parâmetro.
+## 9. Qualidade, interpretação e entregáveis
 
-### 1.5 Variáveis
+Para cada cenário, registrar:
 
-- $p_t$: preço do dia $t$ (decisão).
-- $q_t$: volume previsto do dia $t$ (derivado, $q_t = q_t(p_t)$).
-- $s_w^-, s_w^+ \ge 0$: kg abaixo do mínimo e acima do máximo na semana $w$ (somente na versão
-  flexível).
+- condição inicial e regras ativas;
+- status de término, melhor objetivo, bound, gap e tempo;
+- preços, volumes, custos, impostos e margens diárias, quando houver plano validado;
+- totais semanais e folgas em relação às faixas de referência;
+- quantidade de dias extrapolados;
+- resíduos de demanda, receita e margem recalculados fora do solver;
+- identificação dos dados e do núcleo preditivo usados.
 
-### 1.6 Modelo estrito
+Um término por limite de tempo com plano válido é distinguido de uma solução certificada dentro
+da tolerância. Não encontrar plano não prova inviabilidade. Cenários certificados como inviáveis
+permanecem na comparação com seu diagnóstico, sem uma agenda apresentada como recomendação.
 
-$$\max_{p}\ \sum_{t\in T}\big[(1-\tau)\,p_t - c\big]\, q_t(p_t)$$
+Os entregáveis são o notebook de otimização executado, tabelas e metadados dos cenários, planos
+validados, figuras de sensibilidade e o painel diário comparando curva, otimização e teste.
+Toda narrativa deve explicar o problema e interpretar os resultados produzidos dentro de seu
+próprio contexto.
 
-sujeito a:
-
-$$\underline Q_w \le \sum_{t\in T_w} q_t(p_t) \le \overline Q_w \qquad \forall w \tag{meta}$$
-
-$$|p_t - p_{t-1}| \le \Delta_t \qquad t = 1,\dots,|T|,\quad p_0 = p^{ant} \tag{variação e âncora}$$
-
-A âncora é a restrição de variação do primeiro dia. Escrever um limite $\Delta_t$ por dia permite
-relaxar a âncora sem criar outro modelo (seção 1.11).
-
-$$\underline p_{c(t)} \le p_t \le \overline p_{c(t)} \qquad \forall t \tag{faixa}$$
-
-### 1.7 Modelo flexível (quando o estrito é inviável)
-
-As restrições de meta ganham folgas:
-
-$$\underline Q_w - s_w^- \le \sum_{t\in T_w} q_t(p_t) \le \overline Q_w + s_w^+$$
-
-E o problema é resolvido em duas etapas, sem peso arbitrário de penalidade:
-
-1. minimizar a violação total $V^* = \min \sum_w (s_w^- + s_w^+)$;
-2. maximizar a margem com $\sum_w (s_w^- + s_w^+) \le V^*$.
-
-O resultado é o plano que mais se aproxima da meta e, entre os que se aproximam igualmente, o de
-maior margem.
-
-### 1.8 Formulação resolvida: grade de preços
-
-Como a curva não tem lag, o volume de cada dia depende apenas do preço daquele dia. Os preços são
-discretizados em uma grade $P = \{P_1, \dots, P_K\}$ (passo de R\$ 0,50) e cada dia escolhe um ponto:
-
-$$x_{tk}\in\{0,1\}, \qquad \sum_k x_{tk} = 1, \qquad p_t = \sum_k P_k x_{tk}$$
-
-Volume e margem de cada ponto são calculados antes:
-$Q_{tk} = q_t(P_k)$ e $G_{tk} = [(1-\tau)P_k - c]\,Q_{tk}$. Assim, objetivo, meta e variação
-ficam lineares:
-
-$$\max \sum_{t,k} G_{tk}x_{tk} \quad \text{s.a.}\quad \underline Q_w \le \sum_{t\in T_w}\sum_k Q_{tk}x_{tk} \le \overline Q_w,\quad -\Delta_t \le p_t - p_{t-1} \le \Delta_t$$
-
-A faixa de preço e a variação do primeiro dia em relação a $p^{ant}$ entram eliminando pontos da
-grade. O problema tem cerca de 3.600
-variáveis binárias e é resolvido com HiGHS (`scipy.optimize.milp`). O solver encontra o ótimo
-global **na grade**, dentro das tolerâncias de otimalidade informadas. Por isso, status, limite de
-tempo e `mip_gap` devem ser sempre reportados, e resultados que ficam exatamente em um limiar
-devem ser conferidos com uma grade mais fina.
-
-### 1.9 Propriedades úteis para o relatório
-
-- **Preço ótimo sem restrições:** $p^* = \dfrac{c}{1-\tau}\cdot\dfrac{\beta}{\beta+1} \approx$
-  R\$ 1.176/kg, abaixo da faixa permitida. Com a curva P3 e esse custo, reduzir o preço dentro da
-  faixa aumenta volume e margem ao mesmo tempo. Essa conclusão vale para essa curva e esse custo;
-  com elasticidade −7, por exemplo, $p^* \approx$ R\$ 1.261, e reduzir abaixo disso troca margem por
-  volume.
-- **Volume máximo atingível:** é obtido descendo o preço o máximo permitido todos os dias. Com
-  $\Delta_t =$ R\$ 2 e $p^{ant} =$ R\$ 1.318,92, chega a 79,20 kg na semana 1 e 87,05 kg na
-  semana 2. Isso explica a inviabilidade sem precisar do solver.
-- **Inviabilidade:** resulta da combinação entre preço inicial alto, limite de variação baixo e
-  mínimo semanal exigido. Afrouxar qualquer um dos três pode recuperar a viabilidade.
-
-### 1.10 Fora do modelo (decisões registradas)
-
-| Item | Decisão | Motivo |
-|---|---|---|
-| Otimização robusta (mesmo plano para todos os cenários) | Não usada | Com os multiplicadores atuais (×0,64 e ×1,50), garantir o mínimo no conservador exige ≥ 180,1 kg no central, e respeitar o máximo no otimista exige ≤ 143,2 kg. As duas exigências são incompatíveis |
-| Cenários conservador e otimista | Usados só para avaliar o plano escolhido | Mostram o risco sem distorcer a decisão |
-| Lag de volume | Não usado | Sem ganho comprovado no 2.0.1 e tornaria os dias dependentes entre si |
-| Preços fora da faixa observada | Proibidos | A curva não foi validada nessa região |
-
-### 1.11 Formas de negociar as regras
-
-O modelo não muda; muda apenas o valor dos parâmetros. Cada alavanca é avaliada isoladamente, com as
-demais na regra atual, e depois em conjunto.
-
-| Alavanca | Parâmetro alterado | Leitura comercial |
-|---|---|---|
-| Limite de variação diária | $\Delta_t = \Delta$ para todos os dias | Permitir movimentos maiores durante todo o horizonte |
-| Mínimo semanal | $\varepsilon^-$, com o máximo fixo | Aceitar vender menos |
-| Máximo semanal | $\varepsilon^+$ | Aceitar vender mais; só limita quando a variação é liberada |
-| **Âncora: primeiro ajuste** | $\Delta_1$, com R\$ 2 nos demais dias | Permitir um ajuste maior apenas na entrada do horizonte |
-| **Âncora: janela de transição** | $\Delta_t = \Delta_{trans}$ nos $k$ primeiros dias, R\$ 2 depois | Permitir uma transição de preço por alguns dias e voltar à regra |
-| **Âncora: remoção** | $\Delta_1$ sem limite | Começar o horizonte em qualquer preço da faixa |
-
-As três formas de relaxar a âncora são o mesmo parâmetro visto de ângulos diferentes: o primeiro
-ajuste é a janela com $k = 1$, e a remoção é o primeiro ajuste sem limite. A remoção serve como
-limite superior de referência; a diferença de margem entre ela e a regra atual compara um plano que
-descumpre a meta com outro que a cumpre, e deve ser apresentada como diferença simulada entre
-configurações, não como ganho.
-
-Valores mínimos para viabilizar a meta, já calculados no estudo exploratório (cenário central):
-
-| Janela de transição $k$ | Tolerância 30% | Tolerância 5% |
-|---:|---:|---:|
-| 1 dia (primeiro ajuste) | R\$ 41,47 | R\$ 72,56 |
-| 2 dias | R\$ 24,02 | R\$ 41,04 |
-| 3 dias | R\$ 18,64 | R\$ 31,22 |
-| 5 dias (semana 1) | R\$ 16,10 | R\$ 27,27 |
-| 10 dias (horizonte todo) | R\$ 16,10 | R\$ 27,27 |
-
-Uma janela de transição na primeira semana exige o mesmo limite que liberar a variação nas duas
-semanas: a segunda semana pode permanecer em R\$ 2. É, portanto, um pedido de negociação menor para o
-mesmo resultado de viabilidade. A margem de cada opção será calculada no notebook 3.2.
-
----
-
-## Etapa 2 — Implementação em três versões
-
-Cada versão tem um notebook próprio, no mesmo padrão de texto e explicação do 2.0 e do 2.0.1:
-
-| Versão | Notebook | Pergunta que responde |
-|---|---|---|
-| 1 | `notebooks/3.1-minerva-otimizador-estrito.ipynb` | Existe plano que cumpra todas as regras? Se não, por quê? |
-| 2 | `notebooks/3.2-minerva-otimizador-flexivel.ipynb` | Qual o melhor plano possível e quanto negociar de cada regra? |
-| 3 | `notebooks/3.3-minerva-otimizador-estresse.ipynb` | Quão confiável é a recomendação? |
-
-As versões 1 e 2 são formulações diferentes do mesmo problema: compartilham curva, grade, variação,
-âncora e faixa de preço, mas a versão 1 trata a meta como obrigatória e a versão 2 permite violá-la,
-medindo a violação. A versão 3 não cria modelo novo; avalia o plano recomendado na versão 2.
-
-Para não duplicar código, as funções comuns (entradas, tabela de volume e margem por preço da grade
-e resolução com o solver) são desenvolvidas no notebook 3.1 e, ao final da versão 1, movidas para um
-módulo pequeno em um pacote novo, `src/otimizador/`. O pacote `src/optimization/` contém o otimizador
-anterior e não é reutilizado nem alterado. Os notebooks 3.2 e 3.3 importam o módulo novo.
-
-Entradas, em todas as versões: artefato `models/demand_curve_champion.json`, base de
-desenvolvimento processada e `data/interim/minerva_restricoes.csv`. O conjunto de teste só é
-usado na etapa 3.
-
-### Padrão dos notebooks
-
-Os notebooks seguem a forma do 2.0 e do 2.0.1: cada seção é uma unidade curta com três partes, sem
-células longas que façam várias coisas ao mesmo tempo.
-
-1. **Texto antes do código:** o que a seção faz e por quê, em linguagem direta.
-2. **Código da seção:** uma célula, ou poucas, com uma única responsabilidade (por exemplo, só
-   montar a tabela de volume, ou só resolver o modelo).
-3. **Resultado:** texto depois da execução, com os números obtidos e o que eles significam.
-
-Funções são definidas na seção em que aparecem pela primeira vez, e não todas no início. Cada
-notebook começa com a pergunta que responde e termina com conclusões numeradas.
-
-**Seções do 3.1 (estrito)**
-
-1. Objetivo e pergunta do notebook.
-2. Modelo matemático: resumo da etapa 1, com referência a este documento.
-3. Entradas: curva, preço anterior, custo, imposto, metas, limites; tabela de premissas.
-4. Curva no horizonte: nível por dia e volume na faixa de preço permitida.
-5. Grade de preços: tabela de volume e margem por dia × preço.
-6. Referências simples: manter o preço de 31/10 e descer R\$ 2 por dia.
-7. Montagem do modelo estrito: variáveis, objetivo e restrições, uma de cada vez.
-8. Resolução com a regra atual: status do solver.
-9. Diagnóstico da inviabilidade: volume máximo atingível contra o mínimo exigido.
-10. Resolução com regras liberadas: verificação de que o modelo encontra soluções quando elas existem.
-11. Conclusões.
-
-**Seções do 3.2 (flexível)**
-
-1. Objetivo e pergunta do notebook.
-2. Do modelo estrito ao flexível: folgas e resolução em duas etapas.
-3. Melhor plano possível com a regra atual.
-4. Alavanca 1: limite de variação diária.
-5. Alavanca 2: mínimo semanal.
-6. Alavanca 3: âncora (primeiro ajuste, janela de transição e remoção).
-7. Painel comparativo das alavancas.
-8. Mapa conjunto: variação × tolerância.
-9. Tabela de negociação: opções viáveis, o que exigem e a margem de cada uma.
-10. Conclusões.
-
-**Seções do 3.3 (estresse)**
-
-1. Objetivo e pergunta do notebook.
-2. Plano recomendado no 3.2.
-3. Avaliação nos cenários conservador e otimista.
-4. Sensibilidade à elasticidade.
-5. Sensibilidade ao custo.
-6. Validação numérica: `mip_gap`, grade fina nos limiares e fórmula do volume máximo.
-7. Conclusões e limitações.
-
-### Versão 1 — Modelo estrito e diagnóstico (básica)
-
-**Escopo**
-- Carregar entradas e montar a tabela de volume e margem por dia × preço da grade.
-- Resolver o modelo estrito da seção 1.6.
-- Se for inviável, mostrar por quê: volume máximo atingível de cada semana contra o mínimo exigido.
-- Comparar com duas referências: manter o preço de 31/10 e descer R\$ 2 por dia.
-
-**Saídas:** preço e volume diários, volume semanal contra a faixa, margem e status do solver.
-
-**Critérios de aceite**
-- Reproduzir o volume máximo de 79,20 e 87,05 kg com a regra atual.
-- Margem de referência com preço constante: cerca de R\$ 33,4 mil. Rampa de R\$ 2: cerca de
-  R\$ 35,2 mil.
-- Com o limite de variação liberado, encontrar uma solução viável e coerente com $p^*$ (preços na
-  borda inferior da faixa até o teto de volume limitar).
-
-### Versão 2 — Modelo flexível e curvas de negociação
-
-**Escopo**
-- Implementar o modelo flexível em duas etapas (seção 1.7).
-- Varrer cada alavanca da seção 1.11 isoladamente, mantendo as demais na regra atual:
-  1. limite de variação diária (R\$ 2 a R\$ 60);
-  2. mínimo semanal em kg, com o máximo fixo;
-  3. relaxação da âncora: limite do primeiro ajuste (de R\$ 2 até a remoção) e janela de transição
-     ($k$ = 1, 2, 3 e 5 dias).
-- Mapa conjunto: limite de variação × tolerância, com os kg fora da faixa e a margem.
-- Tudo com tolerância de 30% e sensibilidade com 5%.
-
-**Saídas:** painel com três gráficos na mesma escala vertical (variação diária, mínimo semanal e
-âncora), pontos viáveis cheios e inviáveis vazados, premissas na legenda e o valor mínimo viável de
-cada alavanca marcado; curva da janela de transição; mapa conjunto; tabela-resumo de negociação com
-a margem de cada opção viável.
-
-**Critérios de aceite**
-- Valores mínimos para viabilizar a meta, cenário central: limite de variação de R\$ 16,10 (30%) e
-  R\$ 27,27 (5%); tolerância de 52% com R\$ 2; janela de transição conforme a tabela da seção 1.11.
-- Flexibilizar só o mínimo semanal não altera a margem (rampa de R\$ 2).
-
-### Versão 3 — Testes de estresse e validação
-
-**Escopo**
-- Avaliar o plano recomendado nos cenários conservador e otimista: volume e margem que ele
-  produziria, sem reotimizar.
-- Sensibilidade à elasticidade (−7, −12,36 e −16), informando o preço de referência em que o volume
-  é mantido (R\$ 1.274,43), e ao custo (R\$ 1.004,97 e R\$ 1.010,45).
-- Validação numérica: status e `mip_gap` em todas as resoluções, conferência dos limiares com
-  grade mais fina e conferência do volume máximo pela fórmula da seção 1.9.
-
-**Saídas:** tabela de estresse do plano recomendado e tabela de sensibilidade.
-
-**Critérios de aceite**
-- Toda conclusão econômica do relatório vem acompanhada da faixa de elasticidade em que ela vale.
-
----
-
-## Etapa 3 — Análise e relatório
-
-1. **Recomendação de negociação:** qual restrição flexibilizar e quanto, com a margem prevista e o
-   risco nos cenários. Até aqui, a leitura é: o limite de variação diária é a alavanca que gera
-   margem; flexibilizar só o mínimo semanal compra viabilidade sem ganho de margem; relaxar a
-   âncora com uma janela de transição na primeira semana viabiliza a meta com o mesmo limite diário
-   e mantém a regra de R\$ 2 na segunda semana; o primeiro ajuste isolado exige um corte grande.
-2. **Respostas às perguntas do enunciado:** impacto da meta semanal e impacto da variação entre
-   dias consecutivos, a partir dos painéis da versão 2.
-3. **Uso do conjunto de teste:** relatar a margem realizada pela Minerva no período e comparar com a
-   margem que a curva previa para os preços praticados. O teste não permite medir o que teria
-   acontecido com os preços recomendados.
-4. **Limitações:** elasticidade observacional, erro semanal de previsão (~39%, notebook 2.0.1)
-   maior que a tolerância de 30%, e soluções próximas da borda inferior da faixa de preço.
+A etapa está concluída quando o custo do último dia é reproduzido, as 16 combinações e as 32
+condições de preço inicial são identificáveis, a tolerância de 5% é comparável à principal, os
+planos são verificados e o teste permanece fora da definição de parâmetros e políticas.
