@@ -161,10 +161,26 @@ def summarize(result: dict[str, Any]) -> dict[str, Any]:
 class RelaxationStudy:
     """Reutiliza resultados de entradas idênticas dentro de um estudo congelado."""
 
-    def __init__(self, problem: PriceProblem, *, time_limit: float = 30, mip_gap: float = 1e-6):
+    def __init__(
+        self,
+        problem: PriceProblem,
+        *,
+        time_limit: float = 30,
+        mip_gap: float = 1e-6,
+        daily_variation_ceiling: float | None = None,
+        initial_transition_ceiling: float | None = None,
+    ):
         self.problem = problem
         self.time_limit = time_limit
         self.mip_gap = mip_gap
+        self.daily_variation_ceiling = daily_variation_ceiling
+        self.initial_transition_ceiling = initial_transition_ceiling
+        for value, nominal in [
+            (daily_variation_ceiling, problem.daily_variation),
+            (initial_transition_ceiling, problem.init_var),
+        ]:
+            if value is not None and (not np.isfinite(value) or value < nominal):
+                raise ValueError("O teto comercial deve ser finito e não inferior ao nominal.")
         self.results: dict[tuple, dict[str, Any]] = {}
 
     def evaluate(
@@ -176,6 +192,18 @@ class RelaxationStudy:
         enforce_targets: bool = True,
     ) -> dict[str, Any]:
         relaxation = Relaxation() if relaxation is None else relaxation
+        if self.daily_variation_ceiling is not None and not enforce_variation:
+            raise ValueError("A variação interna não pode ser removida quando há teto comercial.")
+        if self.daily_variation_ceiling is not None and (
+            self.problem.daily_variation * relaxation.daily_variation_factor
+            > self.daily_variation_ceiling + 1e-9
+        ):
+            raise ValueError("A variação interna excede o teto comercial recebido.")
+        if self.initial_transition_ceiling is not None and (
+            self.problem.init_var * relaxation.initial_transition_factor
+            > self.initial_transition_ceiling + 1e-9
+        ):
+            raise ValueError("A primeira mudança excede seu teto comercial recebido.")
         key = (*asdict(relaxation).values(), enforce_initial, enforce_variation, enforce_targets)
         if key not in self.results:
             result = solve(
@@ -302,3 +330,52 @@ def pareto_feasible(frame: pd.DataFrame, costs: list[str]) -> pd.DataFrame:
         for row in values
     ]
     return candidates.loc[keep].sort_values(costs).reset_index(drop=True)
+
+
+def compare_margin_relaxations(
+    frame: pd.DataFrame,
+    costs: list[str],
+    *,
+    margin_tolerance: float = 0.10,
+    cost_tolerance: float = 1e-8,
+) -> pd.DataFrame:
+    """Compara quatro folgas operacionais e margem, sem somar unidades distintas.
+
+    A domina B se exige folgas não maiores e sua margem alcança o limitante de B,
+    dentro da equivalência monetária declarada. Uma folga deve ser menor ou a
+    margem deve superar o limitante além dessa equivalência. Somente planos
+    verificados com ótimo certificado participam. O caso dominante é registrado.
+    """
+    if not np.isfinite(margin_tolerance) or margin_tolerance < 0:
+        raise ValueError("A equivalência de margem deve ser finita e não negativa.")
+    if not np.isfinite(cost_tolerance) or cost_tolerance < 0:
+        raise ValueError("A tolerância das folgas deve ser finita e não negativa.")
+    compared = frame.drop_duplicates("case_id").copy().reset_index(drop=True)
+    compared["dominancia_financeira"] = "nao_comparado"
+    compared["caso_dominante"] = None
+    eligible = compared["plano_verificado"] & compared["status"].eq("optimal")
+    candidates = compared.loc[eligible]
+    values = candidates[costs].to_numpy(dtype=float)
+    profits = candidates["margem_prevista_rs"].to_numpy(dtype=float)
+    bounds = candidates["limite_superior_margem_rs"].to_numpy(dtype=float)
+    if (
+        not np.isfinite(values).all()
+        or not np.isfinite(profits).all()
+        or not np.isfinite(bounds).all()
+    ):
+        raise ValueError("A comparação exige folgas, margens e limitantes finitos.")
+    for position, (index, row) in enumerate(candidates.iterrows()):
+        smaller_costs = np.any(values < values[position] - cost_tolerance, axis=1)
+        no_larger_costs = np.all(values <= values[position] + cost_tolerance, axis=1)
+        no_worse_margin = profits >= bounds[position] - margin_tolerance
+        strictly_higher_margin = profits > bounds[position] + margin_tolerance
+        dominates = no_larger_costs & no_worse_margin & (smaller_costs | strictly_higher_margin)
+        dominates[position] = False
+        witnesses = np.flatnonzero(dominates)
+        compared.loc[index, "dominancia_financeira"] = (
+            "dominado" if len(witnesses) else "eficiente"
+        )
+        if len(witnesses):
+            witness = witnesses[np.argmax(profits[witnesses])]
+            compared.loc[index, "caso_dominante"] = candidates.iloc[witness]["case_id"]
+    return compared

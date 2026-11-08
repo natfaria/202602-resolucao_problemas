@@ -1,0 +1,6 @@
+{
+  "artifact_version": 1,
+  "daily_variation_ceiling": 15.0,
+  "initial_transition_ceiling": null,
+  "description": "O teto de R$ 15/kg limita somente mudanças entre decisões consecutivas dentro do horizonte. A primeira mudança em relação ao preço anterior é examinada separadamente e não recebe esse teto. As faixas das grades não constituem aprovação comercial de seus valores."
+}

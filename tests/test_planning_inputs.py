@@ -10,11 +10,34 @@ import pytest
 from src.optimization.planning_inputs import (
     inputs_digest,
     load_planning_inputs,
+    load_relaxation_limits,
     save_planning_inputs,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
 INPUT = ROOT / "models/otimizacao/entradas_planejamento.json"
+
+
+def test_received_limits_apply_to_internal_changes_only():
+    limits = load_relaxation_limits(ROOT / "models/otimizacao/limites_flexibilizacoes.json")
+    assert limits["daily_variation_ceiling"] == 15
+    assert limits["initial_transition_ceiling"] is None
+
+
+@pytest.mark.parametrize("value", [0, -1, float("inf"), None])
+def test_invalid_relaxation_limit_is_rejected(tmp_path, value):
+    path = tmp_path / "limits.json"
+    path.write_text(
+        json.dumps(
+            {
+                "artifact_version": 1,
+                "daily_variation_ceiling": value,
+                "initial_transition_ceiling": None,
+            }
+        )
+    )
+    with pytest.raises(ValueError, match="positivo e finito"):
+        load_relaxation_limits(path)
 
 
 def test_saved_inputs_reproduce_the_same_problem(tmp_path):

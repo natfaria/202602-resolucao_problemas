@@ -11,12 +11,14 @@ comerciais. As etapas se comunicam por arquivos persistidos, com verificação d
 | [Preparação e EDA](notebooks/1.0-minerva-eda-preparacao.ipynb) | Dados auditados, desenvolvimento, holdout e hipóteses |
 | [Demanda preditiva](notebooks/2.0.1-minerva-modelo-preditivo.ipynb) | Curva selecionada por WMAPE diário, smearing e suporte |
 | [Otimização de referência](notebooks/3.0-minerva-otimizacao-precos.ipynb) | Modelo, diagnóstico, cenários pontuais, entradas e planos |
-| [Flexibilizações graduais](notebooks/3.1-minerva-simulacao-relaxacoes.ipynb) | Mínimos de viabilidade, curvas de margem e combinações |
+| [Flexibilizações graduais](notebooks/3.1-minerva-simulacao-relaxacoes.ipynb) | Mínimos, curvas e conjuntos parciais de preço, piso e teto com comparação financeira |
 
 O preditivo publica `models/preditivo_diario/curva_demanda.json`. A otimização recebe esse
 artefato e publica `models/otimizacao/entradas_planejamento.json`, com custo, imposto, preço
 anterior, metas, limites e calendário. O estudo de flexibilizações recebe essas entradas e
-carrega a curva nelas registrada. Se uma fonte mudar, as entradas devem ser geradas novamente.
+carrega a curva nelas registrada. Se uma fonte mudar, as entradas devem ser geradas novamente. O teto
+comercial do estudo é recebido de `models/otimizacao/limites_flexibilizacoes.json`: R$ 15/kg para
+mudanças dentro do horizonte, com a primeira mudança examinada separadamente.
 
 A preparação deve ser executada antes das etapas seguintes. Com o ambiente `.venv` instalado a
 partir de `requirements.txt`, as etapas de previsão e decisão podem ser reproduzidas por:

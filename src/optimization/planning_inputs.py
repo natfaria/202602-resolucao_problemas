@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -22,6 +23,21 @@ def inputs_digest(payload: dict) -> str:
     return hashlib.sha256(
         json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
+
+
+def load_relaxation_limits(path: str | Path) -> dict:
+    """Carrega os tetos comerciais do estudo; a primeira transição é independente."""
+    payload = load_artifact(path)
+    if payload.get("artifact_version") != 1:
+        raise ValueError("Versão não suportada do artefato de limites de flexibilização.")
+    for name in ["daily_variation_ceiling", "initial_transition_ceiling"]:
+        value = payload[name]
+        if value is None and name == "initial_transition_ceiling":
+            continue
+        if value is None or not math.isfinite(float(value)) or float(value) <= 0:
+            raise ValueError(f"O limite {name} deve ser positivo e finito.")
+        payload[name] = float(value)
+    return payload
 
 
 def save_planning_inputs(

@@ -19,6 +19,19 @@ custo, imposto, preço anterior, regras e calendário. A curva é lida do caminh
 precisão integral. Se uma fonte mudar, as entradas precisam ser geradas novamente. Não há cópia de
 coeficientes entre notebooks nem dependência de variáveis mantidas em memória.
 
+## Limites comerciais recebidos
+
+O estudo recebe `models/otimizacao/limites_flexibilizacoes.json`. O teto para mudanças entre
+as decisões do horizonte é R$ 15/kg. Ele não se aplica à primeira mudança em relação ao preço
+anterior, que continua sendo examinada separadamente nas faixas declaradas da análise.
+A regra de referência da instância permanece R$ 2/kg; R$ 15/kg é o teto da flexibilização admitida.
+
+Buscas de mínimos, curvas, grades e alternativas ficam dentro desse teto. Se uma regra não
+recuperar a viabilidade dentro da faixa permitida, o resultado é registrado sem plano ou margem.
+A referência financeira também é escolhida somente entre recuperações mínimas admissíveis.
+O limite é aplicado na entrada de cada resolução, evitando que uma grade introduza casos acima
+do teto. As comparações com regras removidas permanecem referências teóricas separadas.
+
 ## Regras examinadas
 
 | Análise | Alteração | Condições mantidas |
@@ -63,11 +76,44 @@ mudança e kg de volume. A fronteira é aproximada pela grade, não um mínimo c
 Os casos repetidos são reutilizados apenas dentro da mesma instância congelada. Cada caso recebe
 um identificador que liga condições, status, margem, folgas e plano diário.
 
+## Conjuntos parciais e comparação financeira
+
+A grade conjunta cruza primeira mudança, variação interna, tolerância inferior e tolerância
+superior. As quatro famílias são alteradas independentemente, com todas as regras mantidas sob
+limites finitos. Meta nominal, preço anterior observado, custo, imposto e curva permanecem fixos.
+Os pisos e tetos são verificados em cada semana; cada tolerância modificada é aplicada às duas
+semanas, conservando independência entre os lados inferior e superior.
+
+Além da fronteira de viabilidade das grades de dois eixos, a comparação financeira minimiza as
+quatro folgas e maximiza a margem, sem somar unidades distintas. Um caso pode ser descartado se
+outro exige mudanças não maiores e entrega margem equivalente ou superior, com alguma melhora
+estrita. O limitante do solver e equivalência de R$ 0,10 são utilizados na comparação. Cada caso
+dominado registra a identificação de uma alternativa que o domina. Casos sem ótimo certificado
+não são usados como comparadores financeiros.
+
+As diferenças de margem usam como referência a melhor recuperação mínima isolada admissível, que é uma
+configuração factível. Não se atribui margem ao caso original inviável, nem se interpreta a
+diferença como ganho realizado sobre a operação histórica.
+
+O quadro de destaques considera: maior margem preservando a faixa semanal original; maior margem
+preservando a primeira mudança original; posição central da grade da primeira mudança e teto de variação interna com faixa semanal
+mantida; maior margem eficiente com as quatro famílias alteradas; e maior margem da grade. Casos
+coincidentes são reunidos. Somente alternativas eficientes que superam a referência factível são
+destacadas. A tabela completa de casos eficientes permite examinar os outros compromissos.
+
+As referências sem regras operacionais, com suporte mantido ou extrapolação, são recebidas de
+`data/processed/minerva_otimizacao_resultado.json`, com conferência da curva e das entradas usadas.
+Elas permanecem comparações teóricas separadas dos conjuntos parciais. A melhor margem encontrada
+na grade não é apresentada como a melhor combinação contínua nem como aceitação comercial das
+faixas de análise.
+
 ## Saídas
 
 - Notebook executado `notebooks/3.1-minerva-simulacao-relaxacoes.ipynb`.
 - Tabelas em `reports/tables/relaxacoes/`: entradas de cada caso, limiares, curvas, combinações,
-  fronteiras, sensibilidade da meta nominal e planos nos mínimos.
+  fronteiras, sensibilidade da meta nominal e planos nos mínimos. Incluem também
+  `combinacoes_quatro_regras.csv`, `dominancia_financeira.csv`, `alternativas_eficientes.csv`,
+  `alternativas.csv`, `planos_alternativas.csv` e `resumo_semanal_alternativas.csv`.
 - Figuras em `reports/figures/relaxacoes/`.
 - Planos diários em `data/processed/minerva_planos_relaxacoes.csv`.
 - Resultado consolidado em `data/processed/minerva_simulacao_relaxacoes.json`.

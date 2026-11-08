@@ -13,7 +13,7 @@ considerando calendário, imposto, custo, metas semanais e mudanças de preço.
 | Exploração e preparação | `1.0-minerva-eda-preparacao.ipynb` | Auditar dados, produzir variáveis, separar desenvolvimento e holdout e examinar hipóteses |
 | Demanda preditiva | `2.0.1-minerva-modelo-preditivo.ipynb` | Selecionar a curva por validação cruzada temporal, calibrar smearing e publicar o artefato |
 | Otimização de referência | `3.0-minerva-otimizacao-precos.ipynb` | Definir objetivo, restrições e premissas; resolver casos de referência e exportar as entradas |
-| Flexibilizações graduais | `3.1-minerva-simulacao-relaxacoes.ipynb` | Quantificar mínimos de viabilidade, curvas de margem e combinações parciais de regras |
+| Flexibilizações graduais | `3.1-minerva-simulacao-relaxacoes.ipynb` | Quantificar mínimos, curvas e conjuntos parciais das quatro famílias, comparando folgas e margem |
 
 A numeração identifica as etapas. A otimização de referência apresenta casos pontuais e regras
 mantidas ou removidas. O estudo de flexibilizações mede quanto alterar cada limite e o efeito de
