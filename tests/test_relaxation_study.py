@@ -1,411 +1,153 @@
-"""Testes para a Etapa 1: estrutura de Relaxation e generalização de PriceProblem."""
+"""Provas de viabilidade, isolamento de regras e rastreabilidade das flexibilizações."""
 
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from src.modeling.demand_curve import load_artifact
-from src.optimization.price_schedule import (
-    PriceProblem,
-    problem_from_frames,
-    select_cost_forecast,
-    diagnose_feasibility,
-)
+from src.modeling.demand_curve import load_artifact, predict_volume_from_artifact
+from src.optimization.planning_inputs import load_planning_inputs
 from src.optimization.relaxation_study import (
     Relaxation,
+    RelaxationStudy,
     apply_relaxation,
-    solve,
+    pareto_feasible,
 )
-from src.optimization.price_schedule import PriceProblem
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture(scope="module")
-def minerva_problem():
-    """Fixture com problema oficial da Minerva."""
-    artifact = load_artifact(ROOT / "models/demand_curve_champion_livro.json")
-    uncertainty = load_artifact(ROOT / "models/demand_curve_uncertainty_livro.json")
-    development = pd.read_csv(
-        ROOT / "data/processed/minerva_modelagem_treino.csv", parse_dates=["data"]
+def problem():
+    return load_planning_inputs(ROOT / "models/otimizacao/entradas_planejamento.json", root=ROOT)[
+        0
+    ]
+
+
+@pytest.fixture(scope="module")
+def study(problem):
+    return RelaxationStudy(problem)
+
+
+def test_relaxing_internal_changes_preserves_initial_anchor(problem):
+    relaxed = apply_relaxation(problem, Relaxation(daily_variation_factor=10))
+    assert relaxed.daily_variation == 20
+    assert relaxed.init_var == 2
+    assert relaxed.initial_price == problem.initial_price
+    assert relaxed.artifact is problem.artifact
+    initial = apply_relaxation(problem, Relaxation(initial_transition_factor=30))
+    assert initial.init_var == 60 and initial.daily_variation == 2
+
+
+def test_weekly_sides_are_independent_and_target_shift_is_distinct(problem):
+    lower = apply_relaxation(problem, Relaxation(tolerance_lower_factor=2))
+    upper = apply_relaxation(problem, Relaxation(tolerance_upper_factor=2))
+    shifted = apply_relaxation(problem, Relaxation(target_nominal_factor=0.5))
+    assert lower.tol_lower == 0.6 and lower.tol_upper == 0.3
+    assert upper.tol_lower == 0.3 and upper.tol_upper == 0.6
+    assert shifted.targets["semana_1"] == 82.5
+    assert shifted.tol_lower == shifted.tol_upper == 0.3
+    with pytest.raises(ValueError, match="Tolerâncias separadas"):
+        apply_relaxation(problem, Relaxation(tolerance_lower_factor=4))
+    with pytest.raises(ValueError, match="finitos"):
+        Relaxation(daily_variation_factor=np.inf)
+
+
+def test_official_infeasibility_has_a_volume_certificate_and_no_plan(study):
+    result = study.evaluate()
+    assert result["status"] == "infeasible"
+    assert result["certificate"] == "reachable_volume_bounds"
+    assert result["daily"] is None and result["weekly"] is None
+    assert result["diagnostics"]["weeks"]["semana_1"]["maximum_reachable_kg"] == pytest.approx(
+        76.98681844
     )
-    restrictions = pd.read_csv(ROOT / "data/interim/minerva_restricoes.csv")
-    cost = select_cost_forecast(development)
-    problem = problem_from_frames(
-        artifact,
-        restrictions,
-        unit_cost=cost["forecast_cost_kg"],
-        initial_price=float(development.sort_values("data")["preco_kg"].iloc[-1]),
-        uncertainty=uncertainty,
-    )
-    return problem
+    assert study.evaluate() is result
 
 
-class TestRelaxationStructure:
-    """Testa a estrutura Relaxation e suas invariantes."""
-
-    def test_identity_relaxation(self):
-        """Uma Relaxation() com todos os fatores = 1 é identidade."""
-        relax = Relaxation()
-        assert relax.is_identity
-
-    def test_partial_relaxation_not_identity(self):
-        """Uma Relaxation com qualquer fator > 1 não é identidade."""
-        relax = Relaxation(daily_variation_factor=1.5)
-        assert not relax.is_identity
-
-    def test_all_factors_must_be_gte_one(self):
-        """Nenhum fator pode ser menor que 1."""
-        with pytest.raises(ValueError, match="Fatores de variação"):
-            Relaxation(daily_variation_factor=0.9)
-
-    def test_relaxation_with_multiple_factors(self):
-        """Relaxation pode ter múltiplos fatores aplicados simultaneamente."""
-        relax = Relaxation(
-            daily_variation_factor=2.0,
-            initial_transition_factor=1.5,
-            tolerance_lower_factor=1.3,
-            tolerance_upper_factor=1.2,
-            target_nominal_factor=1.1,
-        )
-        assert not relax.is_identity
-        assert relax.daily_variation_factor == 2.0
-        assert relax.initial_transition_factor == 1.5
+@pytest.mark.parametrize(
+    "rule,upper,precision",
+    [
+        ("daily_variation", 35, 0.01),
+        ("initial_transition", 120, 0.01),
+        ("tolerance_lower", 0.9, 1e-5),
+    ],
+)
+def test_minimum_is_bracketed_by_infeasibility_and_a_verified_plan(study, rule, upper, precision):
+    threshold = study.minimum(rule, upper=upper, precision=precision)
+    assert threshold["status"] == "bracketed"
+    assert 0 < threshold["feasible_value"] - threshold["infeasible_value"] <= precision
+    below = study.evaluate(study.relaxation_at(rule, threshold["infeasible_value"]))
+    above = study.evaluate(study.relaxation_at(rule, threshold["feasible_value"]))
+    assert below["status"] == "infeasible" and below["daily"] is None
+    assert above["validation"]["satisfied"]
+    assert above["status"] == "optimal"
+    assert not above["daily"]["extrapolado"].any()
 
 
-class TestSeparatedTolerances:
-    """Testa tolerâncias separadas em PriceProblem."""
-
-    def test_tolerance_lower_upper_default_to_tolerance(self, minerva_problem):
-        """Quando não especificadas, tolerance_lower/upper usam o valor de tolerance."""
-        assert minerva_problem.tolerance_lower is None
-        assert minerva_problem.tolerance_upper is None
-        assert minerva_problem.tol_lower == minerva_problem.tolerance
-        assert minerva_problem.tol_upper == minerva_problem.tolerance
-
-    def test_can_create_problem_with_separated_tolerances(self, minerva_problem):
-        """É possível criar um PriceProblem com tolerâncias separadas diferentes."""
-        new_problem = PriceProblem(
-            artifact=minerva_problem.artifact,
-            dates=minerva_problem.dates,
-            weekdays=minerva_problem.weekdays,
-            weeks=minerva_problem.weeks,
-            targets=minerva_problem.targets,
-            tolerance=minerva_problem.tolerance,
-            initial_price=minerva_problem.initial_price,
-            daily_variation=minerva_problem.daily_variation,
-            unit_cost=minerva_problem.unit_cost,
-            tax_rate=minerva_problem.tax_rate,
-            scenario=minerva_problem.scenario,
-            uncertainty=minerva_problem.uncertainty,
-            tolerance_lower=0.20,
-            tolerance_upper=0.40,
-        )
-        assert new_problem.tol_lower == 0.20
-        assert new_problem.tol_upper == 0.40
-
-    def test_separated_tolerances_must_be_valid(self, minerva_problem):
-        """Tolerâncias separadas devem estar em [0, 1)."""
-        with pytest.raises(ValueError, match="Tolerâncias separadas"):
-            PriceProblem(
-                artifact=minerva_problem.artifact,
-                dates=minerva_problem.dates,
-                weekdays=minerva_problem.weekdays,
-                weeks=minerva_problem.weeks,
-                targets=minerva_problem.targets,
-                tolerance=minerva_problem.tolerance,
-                initial_price=minerva_problem.initial_price,
-                daily_variation=minerva_problem.daily_variation,
-                unit_cost=minerva_problem.unit_cost,
-                tolerance_lower=-0.1,
-            )
+def test_upper_limit_alone_cannot_recover_a_shortage(study):
+    result = study.evaluate(Relaxation(tolerance_upper_factor=3))
+    assert result["status"] == "infeasible"
+    assert result["diagnostics"]["weeks"]["semana_1"]["shortage_kg"] > 38
 
 
-class TestApplyRelaxation:
-    """Testa apply_relaxation mantendo compatibilidade com problema original."""
-
-    def test_identity_relaxation_preserves_problem(self, minerva_problem):
-        """Aplicar Relaxation() (identidade) deve preservar o problema."""
-        relax = Relaxation()
-        relaxed = apply_relaxation(minerva_problem, relax)
-
-        assert relaxed.daily_variation == minerva_problem.daily_variation
-        assert relaxed.targets == minerva_problem.targets
-        assert relaxed.tol_lower == minerva_problem.tol_lower
-        assert relaxed.tol_upper == minerva_problem.tol_upper
-
-    def test_daily_variation_relaxation_scales_correctly(self, minerva_problem):
-        """Fator de variação diária deve escalar daily_variation."""
-        relax = Relaxation(daily_variation_factor=2.0)
-        relaxed = apply_relaxation(minerva_problem, relax)
-
-        assert relaxed.daily_variation == pytest.approx(
-            minerva_problem.daily_variation * 2.0
-        )
-
-    def test_tolerance_relaxation_scales_correctly(self, minerva_problem):
-        """Fatores de tolerância devem escalar as tolerâncias."""
-        relax = Relaxation(
-            tolerance_lower_factor=1.5,
-            tolerance_upper_factor=2.0,
-        )
-        relaxed = apply_relaxation(minerva_problem, relax)
-
-        assert relaxed.tol_lower == pytest.approx(
-            minerva_problem.tolerance * 1.5
-        )
-        assert relaxed.tol_upper == pytest.approx(
-            minerva_problem.tolerance * 2.0
-        )
-
-    def test_target_nominal_relaxation_scales_correctly(self, minerva_problem):
-        """Fator de meta nominal deve escalar todas as metas."""
-        relax = Relaxation(target_nominal_factor=0.8)
-        relaxed = apply_relaxation(minerva_problem, relax)
-
-        for week, target in minerva_problem.targets.items():
-            assert relaxed.targets[week] == pytest.approx(target * 0.8)
-
-
-class TestBehaviorPreservation:
-    """Testa que Etapa 1 preserva comportamento de Etapa 0."""
-
-    def test_official_problem_still_infeasible_with_identity(self, minerva_problem):
-        """O problema oficial permanece infactível com Relaxation() identidade."""
-        diagnostic = diagnose_feasibility(minerva_problem)
-        assert diagnostic["status"] == "infeasible_targets"
-
-    def test_separated_tolerances_not_affecting_default_behavior(self, minerva_problem):
-        """Tolerâncias separadas não afetam behavior quando iguais à original."""
-        relax = Relaxation()
-        relaxed = apply_relaxation(minerva_problem, relax)
-        diagnostic_original = diagnose_feasibility(minerva_problem)
-        diagnostic_relaxed = diagnose_feasibility(relaxed)
-
-        # Ambos devem ter mesmo status de viabilidade
-        assert diagnostic_original["potentially_feasible"] == diagnostic_relaxed["potentially_feasible"]
-
-    def test_solve_with_identity_relaxation_produces_same_result_as_optimize(self, minerva_problem):
-        """solve() com identidade deve concordar com optimize_prices em infactibilidade."""
-        from src.optimization.price_schedule import optimize_prices
-
-        result_optimize = optimize_prices(minerva_problem)
-        result_solve = solve(minerva_problem, Relaxation())
-
-        assert result_optimize["status"] == result_solve["status"]
-        assert result_optimize["status"] == "infeasible"
-
-
-class TestSolveFunction:
-    """Testa a função solve com multi-start."""
-
-    def test_solve_with_default_relaxation(self, minerva_problem):
-        """solve() sem relaxation usa Relaxation() implicitamente."""
-        result = solve(minerva_problem)
-        assert result["status"] == "infeasible"
-        assert result["relaxation_applied"].is_identity
-
-    def test_solve_returns_convergence_info(self, minerva_problem):
-        """solve() retorna dict com convergence para cada ponto inicial (quando factível)."""
-        # Use uma relaxação forte que torna o problema factível para testar convergence
-        relax = Relaxation(
-            daily_variation_factor=15.0,
-            tolerance_lower_factor=2.0,
-            tolerance_upper_factor=2.0,
-        )
-        result = solve(minerva_problem, relax, n_starts=5)
-        assert "convergence" in result
-        assert isinstance(result["convergence"], dict)
-        # Com 5 starts, devem haver 5 inícios reportados
-        assert len(result["convergence"]) == 5
-
-    def test_solve_respects_n_starts_parameter(self, minerva_problem):
-        """solve() usa exatamente n_starts pontos iniciais."""
-        # Use uma relaxação que torna o problema factível
-        relax = Relaxation(
-            daily_variation_factor=15.0,
-            tolerance_lower_factor=2.0,
-            tolerance_upper_factor=2.0,
-        )
-        for n_starts in [3, 5, 10]:
-            result = solve(minerva_problem, relax, n_starts=n_starts)
-            assert len(result["convergence"]) == n_starts
-
-    def test_solve_with_easier_relaxation(self, minerva_problem):
-        """solve() com relaxação mais forte deve produzir resultado factível."""
-        relax = Relaxation(
-            daily_variation_factor=15.0,
-            tolerance_lower_factor=2.0,
-            tolerance_upper_factor=2.0,
-        )
-        result = solve(minerva_problem, relax, n_starts=3)
+def test_margin_bounds_are_consistent_with_nested_feasible_sets(study):
+    results = [study.evaluate(Relaxation(initial_transition_factor=x / 2)) for x in [60, 80, 110]]
+    for result in results:
         assert result["status"] == "optimal"
-        assert result["daily"] is not None
-        assert result["weekly"] is not None
-        assert result["total_margin_rs"] is not None
-
-    def test_solve_returns_slacks_and_active_constraints(self, minerva_problem):
-        """solve() retorna folgas de restrições e quais estão ativas."""
-        relax = Relaxation(daily_variation_factor=10.0)
-        result = solve(minerva_problem, relax, n_starts=3)
-        assert "slacks" in result
-        assert "active_constraints" in result
-        assert isinstance(result["slacks"], dict)
-        assert isinstance(result["active_constraints"], list)
+        assert result["validation"]["satisfied"]
+    for smaller, larger in pairwise(results):
+        assert smaller["total_margin_rs"] <= larger["bound_rs"] + 0.02
+        assert larger["total_margin_rs"] >= smaller["total_margin_rs"] - 0.10
 
 
-class TestIsolableRelaxations:
-    """Testa que R1 e R2 são isoláveis (variação diária e salto inicial)."""
+def test_unknown_solver_outcome_does_not_become_infeasibility(problem, monkeypatch):
+    import src.optimization.relaxation_study as module
 
-    def test_r1_and_r2_are_isolable_strong_relaxation(self, minerva_problem):
-        """R1 (variação diária) e R2 (salto inicial) devem ser independentes.
-
-        daily_factor=8 com initial_factor=1 e tolerância relaxada:
-        mantém o salto inicial em R$ 2 e produz solução factível.
-        """
-        relax = Relaxation(
-            daily_variation_factor=8.0,
-            initial_transition_factor=1.0,  # Sem relaxação no salto
-            tolerance_lower_factor=2.0,
-            tolerance_upper_factor=2.0,
-        )
-        result = solve(minerva_problem, relax, n_starts=5)
-
-        # Deve ser factível
-        assert result["status"] == "optimal", "Deve ter solução com essa relaxação"
-
-        # O salto inicial deve respeitar initial_transition_factor=1
-        daily = result["daily"]
-        initial_change = abs(daily["preco_kg"].iloc[0] - minerva_problem.initial_price)
-        assert initial_change <= minerva_problem.init_var + 1e-5, (
-            f"Salto inicial deve ser ≤ R$ {minerva_problem.init_var}, "
-            f"mas foi R$ {initial_change:.2f}"
-        )
-
-    def test_r2_can_be_relaxed_independently_of_r1(self, minerva_problem):
-        """R2 (salto inicial) pode ser relaxado mesmo sem relaxar R1 (variação diária)."""
-        relax = Relaxation(
-            daily_variation_factor=1.0,  # Sem relaxação em variação diária
-            initial_transition_factor=2.5,  # Relaxação no salto inicial
-            tolerance_lower_factor=2.0,
-            tolerance_upper_factor=2.0,
-        )
-        result = solve(minerva_problem, relax, n_starts=3)
-
-        # Com inicial_transition ampliado, deveria ser mais fácil ser factível
-        if result["status"] == "optimal":
-            daily = result["daily"]
-            # O salto inicial deve poder ser maior
-            initial_change = abs(daily["preco_kg"].iloc[0] - minerva_problem.initial_price)
-            assert initial_change <= minerva_problem.init_var * 2.5 + 1e-5
+    monkeypatch.setattr(
+        module, "solve_scenario", lambda *a, **k: {"status": "no_solution", "validation": None}
+    )
+    with pytest.raises(RuntimeError, match="não determinada"):
+        RelaxationStudy(problem).minimum("initial_transition", upper=120)
 
 
-class TestInitialVariationAndDayRule:
-    """Testa initial_variation e day_rule em PriceProblem."""
-
-    def test_initial_variation_defaults_to_daily_variation(self, minerva_problem):
-        """initial_variation padrão é daily_variation."""
-        assert minerva_problem.init_var == minerva_problem.daily_variation
-
-    def test_can_set_initial_variation(self, minerva_problem):
-        """É possível definir initial_variation diferente de daily_variation."""
-        problem = PriceProblem(
-            artifact=minerva_problem.artifact,
-            dates=minerva_problem.dates,
-            weekdays=minerva_problem.weekdays,
-            weeks=minerva_problem.weeks,
-            targets=minerva_problem.targets,
-            tolerance=minerva_problem.tolerance,
-            initial_price=minerva_problem.initial_price,
-            daily_variation=minerva_problem.daily_variation,
-            unit_cost=minerva_problem.unit_cost,
-            initial_variation=5.0,
-        )
-        assert problem.init_var == 5.0
-        assert problem.daily_variation == minerva_problem.daily_variation
-
-    def test_day_rule_defaults_to_decision(self, minerva_problem):
-        """day_rule padrão é 'decision'."""
-        assert minerva_problem.day_rule == "decision"
-
-    def test_can_set_day_rule_to_calendar(self, minerva_problem):
-        """É possível definir day_rule como 'calendar'."""
-        problem = PriceProblem(
-            artifact=minerva_problem.artifact,
-            dates=minerva_problem.dates,
-            weekdays=minerva_problem.weekdays,
-            weeks=minerva_problem.weeks,
-            targets=minerva_problem.targets,
-            tolerance=minerva_problem.tolerance,
-            initial_price=minerva_problem.initial_price,
-            daily_variation=minerva_problem.daily_variation,
-            unit_cost=minerva_problem.unit_cost,
-            day_rule="calendar",
-        )
-        assert problem.day_rule == "calendar"
-
-    def test_invalid_day_rule_raises_error(self, minerva_problem):
-        """day_rule inválido deve lançar erro."""
-        with pytest.raises(ValueError, match="day_rule deve ser"):
-            PriceProblem(
-                artifact=minerva_problem.artifact,
-                dates=minerva_problem.dates,
-                weekdays=minerva_problem.weekdays,
-                weeks=minerva_problem.weeks,
-                targets=minerva_problem.targets,
-                tolerance=minerva_problem.tolerance,
-                initial_price=minerva_problem.initial_price,
-                daily_variation=minerva_problem.daily_variation,
-                unit_cost=minerva_problem.unit_cost,
-                day_rule="invalid",
-            )
-
-    def test_calendar_mode_allows_larger_gaps_on_weekends(self, minerva_problem):
-        """No modo 'calendar', sexta→segunda (3 dias) permite até 3×Δ."""
-        # Este teste é ilustrativo; em um caso real, testaríamos com um
-        # problema que tem uma transição sexta→segunda
-        problem = PriceProblem(
-            artifact=minerva_problem.artifact,
-            dates=minerva_problem.dates,
-            weekdays=minerva_problem.weekdays,
-            weeks=minerva_problem.weeks,
-            targets=minerva_problem.targets,
-            tolerance=minerva_problem.tolerance,
-            initial_price=minerva_problem.initial_price,
-            daily_variation=minerva_problem.daily_variation,
-            unit_cost=minerva_problem.unit_cost,
-            day_rule="calendar",
-        )
-        # Verificar que foi criado corretamente
-        assert problem.day_rule == "calendar"
+def test_nominal_target_sensitivity_is_not_bisected_as_a_relaxation(study):
+    with pytest.raises(ValueError, match="monotônica"):
+        study.minimum("target_nominal", upper=200)
 
 
-class TestConvergenceSummary:
-    """Testa informações de convergência no resultado de solve."""
+def test_pareto_uses_only_verified_cases_and_keeps_operational_tradeoffs():
+    frame = pd.DataFrame(
+        {
+            "a": [2, 4, 5, 1],
+            "b": [5, 2, 6, 1],
+            "plano_verificado": [True, True, True, False],
+            "margem_prevista_rs": [100, 90, 150, None],
+        }
+    )
+    frontier = pareto_feasible(frame, ["a", "b"])
+    assert list(zip(frontier["a"], frontier["b"], strict=True)) == [(2, 5), (4, 2)]
 
-    def test_convergence_summary_reports_n_converged(self, minerva_problem):
-        """solve() retorna convergence_summary com n_converged."""
-        relax = Relaxation(
-            daily_variation_factor=15.0,
-            tolerance_lower_factor=2.0,
-            tolerance_upper_factor=2.0,
-        )
-        result = solve(minerva_problem, relax, n_starts=5)
-        assert "convergence_summary" in result
-        assert result["convergence_summary"]["n_starts"] == 5
-        assert result["convergence_summary"]["n_converged"] >= 1
-        assert 0 <= result["convergence_summary"]["convergence_rate"] <= 1
 
-    def test_convergence_details_include_initial_feasibility(self, minerva_problem):
-        """Cada entrada em convergence inclui initial_feasible."""
-        relax = Relaxation(
-            daily_variation_factor=15.0,
-            tolerance_lower_factor=2.0,
-            tolerance_upper_factor=2.0,
-        )
-        result = solve(minerva_problem, relax, n_starts=3)
-        for start_key, start_info in result["convergence"].items():
-            assert "initial_feasible" in start_info
-            assert isinstance(start_info["initial_feasible"], bool)
+def test_saved_relaxations_use_the_published_curve_and_fixed_historical_inputs(problem):
+    payload = load_artifact(ROOT / "data/processed/minerva_simulacao_relaxacoes.json")
+    assert payload["model_core_sha256"] == problem.artifact["model_core_sha256"]
+    assert payload["unit_cost_kg"] == pytest.approx(problem.costs[0])
+    assert payload["initial_price_observed"] == problem.initial_price
+    assert payload["smearing_factor"] == problem.artifact["smearing_factor"]
+    assert payload["holdout_used"] is False
+    assert payload["cases"]
+    for result in payload["cases"].values():
+        assert result["initial_price"] == problem.initial_price
+        assert result["model_core_sha256"] == problem.artifact["model_core_sha256"]
+        if result["daily"] is None:
+            continue
+        daily = pd.DataFrame(result["daily"])
+        predicted = [
+            predict_volume_from_artifact(problem.artifact, p, d)
+            for p, d in zip(daily["preco_kg"], daily["dia_semana"], strict=True)
+        ]
+        assert daily["volume_previsto_kg"].to_numpy() == pytest.approx(predicted)
+        assert result["validation"]["satisfied"]
+        assert not daily["extrapolado"].any()

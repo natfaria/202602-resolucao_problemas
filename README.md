@@ -1,61 +1,51 @@
-# Resolução de Problemas via Modelagem Matemática 2026
+# Planejamento de preços e demanda — Minerva
 
-<a target="_blank" href="https://cookiecutter-data-science.drivendata.org/">
-    <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
-</a>
+Projeto de modelagem matemática para prever demanda e escolher preços diários de `Produto_A`
+em um horizonte de duas semanas, maximizando a margem de contribuição prevista sob restrições
+comerciais. As etapas se comunicam por arquivos persistidos, com verificação de integridade.
 
-Resolução do Problema da Minerva de Curva de elasticidade
+## Fluxo de execução
 
-## Project Organization
+| Notebook | Entrega |
+|---|---|
+| [Preparação e EDA](notebooks/1.0-minerva-eda-preparacao.ipynb) | Dados auditados, desenvolvimento, holdout e hipóteses |
+| [Demanda preditiva](notebooks/2.0.1-minerva-modelo-preditivo.ipynb) | Curva selecionada por WMAPE diário, smearing e suporte |
+| [Otimização de referência](notebooks/3.0-minerva-otimizacao-precos.ipynb) | Modelo, diagnóstico, cenários pontuais, entradas e planos |
+| [Flexibilizações graduais](notebooks/3.1-minerva-simulacao-relaxacoes.ipynb) | Mínimos de viabilidade, curvas de margem e combinações |
 
-```
-├── LICENSE            <- Open-source license if one is chosen
-├── Makefile           <- Makefile with convenience commands like `make data` or `make train`
-├── README.md          <- The top-level README for developers using this project.
-├── data
-│   ├── external       <- Data from third party sources.
-│   ├── interim        <- Intermediate data that has been transformed.
-│   ├── processed      <- The final, canonical data sets for modeling.
-│   └── raw            <- The original, immutable data dump.
-│
-├── docs               <- A default mkdocs project; see www.mkdocs.org for details
-│
-├── models             <- Trained and serialized models, model predictions, or model summaries
-│
-├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-│                         the creator's initials, and a short `-` delimited description, e.g.
-│                         `1.0-jqp-initial-data-exploration`.
-│
-├── pyproject.toml     <- Project configuration file with package metadata for 
-│                         src and configuration for tools like black
-│
-├── references         <- Data dictionaries, manuals, and all other explanatory materials.
-│
-├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures        <- Generated graphics and figures to be used in reporting
-│
-├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-│                         generated with `pip freeze > requirements.txt`
-│
-├── setup.cfg          <- Configuration file for flake8
-│
-└── src   <- Source code for use in this project.
-    │
-    ├── __init__.py             <- Makes src a Python module
-    │
-    ├── config.py               <- Store useful variables and configuration
-    │
-    ├── dataset.py              <- Scripts to download or generate data
-    │
-    ├── features.py             <- Code to create features for modeling
-    │
-    ├── modeling                
-    │   ├── __init__.py 
-    │   ├── predict.py          <- Code to run model inference with trained models          
-    │   └── train.py            <- Code to train models
-    │
-    └── plots.py                <- Code to create visualizations
+O preditivo publica `models/preditivo_diario/curva_demanda.json`. A otimização recebe esse
+artefato e publica `models/otimizacao/entradas_planejamento.json`, com custo, imposto, preço
+anterior, metas, limites e calendário. O estudo de flexibilizações recebe essas entradas e
+carrega a curva nelas registrada. Se uma fonte mudar, as entradas devem ser geradas novamente.
+
+A preparação deve ser executada antes das etapas seguintes. Com o ambiente `.venv` instalado a
+partir de `requirements.txt`, as etapas de previsão e decisão podem ser reproduzidas por:
+
+```bash
+.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/2.0.1-minerva-modelo-preditivo.ipynb --ExecutePreprocessor.timeout=300
+.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/3.0-minerva-otimizacao-precos.ipynb --ExecutePreprocessor.timeout=300
+.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/3.1-minerva-simulacao-relaxacoes.ipynb --ExecutePreprocessor.timeout=300
 ```
 
---------
+A resolução utiliza Gurobi 13 via `gurobipy`. Cada notebook executa com um kernel limpo e seus
+arquivos de entrada, sem depender de variáveis de outra sessão.
 
+## Artefatos
+
+- `data/raw/`: fontes originais.
+- `data/interim/` e `data/processed/`: dados preparados, resultados e planos.
+- `models/preditivo_diario/`: curva preditiva publicada.
+- `models/otimizacao/`: entradas congeladas do planejamento.
+- `reports/tables/` e `reports/figures/`: comparações e figuras da otimização de referência.
+- `reports/tables/relaxacoes/` e `reports/figures/relaxacoes/`: estudo de flexibilizações.
+- `src/optimization/`: contrato do planejamento, solver e estudo de flexibilizações.
+
+## Verificação e documentação
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
+O funcionamento, as premissas e a divisão das etapas estão em
+[Planejamento do projeto](docs/planejamento/index.md). Cada plano exportado conserva sua curva,
+suas entradas e suas condições operacionais. Margens são previsões condicionais ao modelo.

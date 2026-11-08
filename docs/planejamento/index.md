@@ -1,19 +1,12 @@
-# Resolução de Problemas via Modelagem Matemática 2026 documentation!
+# Planejamento e funcionamento do projeto
 
-## Description
+O fluxo conecta preparação de dados, previsão de demanda, otimização de preços e estudo de
+flexibilizações por artefatos persistidos e verificados.
 
-Resolução do Problema da Minerva de Curva de elasticidade
+- [Etapas, entradas e entregas](plano-acao-tres-notebooks.md).
+- [Modelo matemático de otimização](modelo-matematico-otimizacao-precos.md).
+- [Casos de referência e comparações operacionais](plano-otimizador-margem.md).
+- [Mínimos de viabilidade, curvas e combinações de flexibilizações](plano-simulacao-relaxacoes.md).
 
-## Plano de execução
-
-O roteiro metodológico e técnico está documentado em
-[Plano de ação: EDA, curva de demanda e otimização de preços](plano-acao-tres-notebooks.md).
-
-A formulação genérica da etapa de decisão está em
-[Modelo matemático para otimização de preços](modelo-matematico-otimizacao-precos.md).
-
-A narrativa dos resultados preliminares, das hipóteses de calendário e da seleção do modelo de regressão está em [Storytelling — curva de demanda, modelo 2.0](storytelling/curva-de-demanda-modelo-2-0.md).
-
-## Commands
-
-The Makefile contains the central entry points for common tasks related to this project.
+A otimização de referência exporta as entradas econômicas e operacionais. O estudo de
+flexibilizações recebe esse artefato e a curva nele registrada, mantendo as mesmas fontes.

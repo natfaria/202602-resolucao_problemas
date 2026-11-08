@@ -8,7 +8,7 @@ estabilidade, ligação inicial e suporte de preço. Os resultados devem disting
 observadas das hipóteses usadas em cada simulação.
 
 O desenvolvimento contém somente informações até 31/10/2025. O preditivo permanece congelado em
-`models/preditivo/curva_demanda.json`. Os dados realizados de novembro são usados apenas depois
+`models/preditivo_diario/curva_demanda.json`. Os dados realizados de novembro são usados apenas depois
 da definição das políticas, para comparação descritiva e avaliação preditiva.
 
 ## 2. Entradas do problema
@@ -170,3 +170,14 @@ próprio contexto.
 A etapa está concluída quando o custo do último dia é reproduzido, as 16 combinações e as 32
 condições de preço inicial são identificáveis, a tolerância de 5% é comparável à principal, os
 planos são verificados e o teste permanece fora da definição de parâmetros e políticas.
+
+## 10. Entradas persistidas e estudo de flexibilizações
+
+O notebook `3.0-minerva-otimizacao-precos.ipynb` exporta
+`models/otimizacao/entradas_planejamento.json` antes de otimizar. O arquivo reúne custo, imposto,
+preço anterior, regras, horizonte e referências verificáveis à curva, ao treino e às restrições.
+
+O notebook `3.1-minerva-simulacao-relaxacoes.ipynb` recebe esse artefato para calcular mínimos de
+viabilidade, curvas graduais e combinações parciais. O estudo mantém o preço anterior real e separa
+a mudança inicial da variação interna. Sua execução não usa o holdout e não exige estado de memória
+da otimização de referência. O método e as saídas estão em `plano-simulacao-relaxacoes.md`.

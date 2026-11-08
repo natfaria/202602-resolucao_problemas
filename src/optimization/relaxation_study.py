@@ -1,37 +1,23 @@
-"""Estudo de relaxações para recuperar factibilidade com máxima margem.
-
-Este módulo estende o otimizador de preços base para explorar combinações
-de folgas em variação diária, transição inicial, metas e tolerâncias.
-Mantém compatibilidade com PriceProblem e introduce a estrutura Relaxation.
-"""
+"""Flexibilizações graduais das regras de preço e volume com a mesma curva congelada."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 import numpy as np
 import pandas as pd
-from scipy.optimize import minimize
 
-from src.optimization.price_schedule import (
-    PriceProblem,
-    _nonlinear_constraints,
-    demand_vector,
-    diagnose_feasibility,
-    margin_vector,
-    price_bounds,
-    reachable_price_path,
-    validate_prices,
-)
+from src.optimization.gurobi_solver import Scenario, solve_scenario
+from src.optimization.price_schedule import PriceProblem, diagnose_feasibility
 
 
 @dataclass(frozen=True)
 class Relaxation:
-    """Descreve todas as folgas de uma rodada de otimização.
+    """Multiplica limites de mudança e tolerâncias; a meta nominal admite sensibilidade.
 
-    Todos os fatores são multiplicadores (≥1) sobre o valor nominal.
-    fator=1 significa sem relaxação; fator>1 significa afrouxamento.
+    Aumentar uma tolerância flexibiliza somente seu lado da faixa. Alterar a meta
+    nominal desloca os dois lados e não constitui uma relaxação monotônica.
     """
 
     daily_variation_factor: float = 1.0
@@ -41,351 +27,278 @@ class Relaxation:
     target_nominal_factor: float = 1.0
 
     def __post_init__(self) -> None:
-        # Variação e tolerância: devem ser >= 1.0 (maior = mais fácil)
-        if not all(f >= 1.0 for f in [
-            self.daily_variation_factor,
-            self.initial_transition_factor,
-            self.tolerance_lower_factor,
-            self.tolerance_upper_factor,
-        ]):
-            raise ValueError("Fatores de variação e tolerância devem ser ≥ 1.0.")
-        # Meta nominal pode ser reduzida ou aumentada (fator > 0)
+        values = np.array(list(asdict(self).values()), dtype=float)
+        if not np.isfinite(values).all():
+            raise ValueError("Os fatores devem ser finitos.")
+        if (values[:4] < 1).any():
+            raise ValueError("Fatores de variação e tolerância devem ser >= 1.")
         if self.target_nominal_factor <= 0:
-            raise ValueError("Fator de meta nominal deve ser > 0.")
+            raise ValueError("O fator de meta nominal deve ser positivo.")
 
     @property
     def is_identity(self) -> bool:
-        """True se nenhuma relaxação foi aplicada (todos os fatores = 1.0)."""
-        return all(f == 1.0 for f in [
-            self.daily_variation_factor,
-            self.initial_transition_factor,
-            self.tolerance_lower_factor,
-            self.tolerance_upper_factor,
-            self.target_nominal_factor,
-        ])
+        return all(value == 1 for value in asdict(self).values())
 
 
 def apply_relaxation(problem: PriceProblem, relaxation: Relaxation) -> PriceProblem:
-    """Cria um novo PriceProblem com as relaxações aplicadas.
-
-    Mantém o comportamento padrão: se relaxation.is_identity,
-    retorna um problema equivalente ao original.
-
-    O salto inicial (R2) é independente da variação diária (R1):
-    - daily_variation é multiplicado por daily_variation_factor
-    - initial_transition é nominal * initial_transition_factor
-    """
-    # Variação diária (R1)
-    new_daily_variation = problem.daily_variation * relaxation.daily_variation_factor
-
-    # Tolerâncias separadas (R3/R4/R5)
-    tolerance_lower = problem.tol_lower * relaxation.tolerance_lower_factor
-    tolerance_upper = problem.tol_upper * relaxation.tolerance_upper_factor
-
-    # Metas nominais por semana (R5)
-    new_targets = {
-        week: target * relaxation.target_nominal_factor
-        for week, target in problem.targets.items()
-    }
-
-    # Variação inicial (R2) é independente de variação diária (R1)
-    # Aplicamos o fator de relaxação ao valor nominal init_var, não ao daily_variation
-    new_initial_variation = (
-        problem.init_var * relaxation.initial_transition_factor
-    )
-
-    return PriceProblem(
-        artifact=problem.artifact,
-        dates=problem.dates,
-        weekdays=problem.weekdays,
-        weeks=problem.weeks,
-        targets=new_targets,
-        tolerance=problem.tolerance,
-        initial_price=problem.initial_price,
-        daily_variation=new_daily_variation,
-        unit_cost=problem.unit_cost,
-        tax_rate=problem.tax_rate,
-        scenario=problem.scenario,
-        uncertainty=problem.uncertainty,
-        tolerance_lower=tolerance_lower if tolerance_lower != problem.tolerance else None,
-        tolerance_upper=tolerance_upper if tolerance_upper != problem.tolerance else None,
-        # Sempre armazenar initial_variation explicitamente para evitar fallback
-        initial_variation=new_initial_variation,
-        day_rule=problem.day_rule,
-    )
-
-
-def _generate_initial_points(
-    low: np.ndarray,
-    high: np.ndarray,
-    n_starts: int,
-    seed: int = 42,
-) -> list[np.ndarray]:
-    """Gera n_starts pontos iniciais com diversidade de pesos por dia.
-
-    Retorna:
-    - 3 pontos determinísticos: baixo, alto, médio
-    - (n_starts - 3) pontos com pesos diferentes por dia (não apenas combinação linear)
-    """
-    rng = np.random.default_rng(seed)
-    starts = [np.copy(low), np.copy(high), (low + high) / 2]
-
-    if n_starts > 3:
-        n_random = n_starts - 3
-
-        for _ in range(n_random):
-            # Gerar pesos diferentes para cada dia, não só uma combinação linear
-            weights = rng.uniform(0, 1, len(low))
-            start = low * weights + high * (1 - weights)
-            starts.append(start)
-
-    return starts
-
-
-def _multistart_optimization(
-    problem: PriceProblem,
-    initial_delta: float | None,
-    daily_delta: float | None,
-    enforce_targets: bool,
-    n_starts: int = 10,
-    seed: int = 42,
-) -> dict[str, Any]:
-    """Executa otimização multi-start e retorna candidatos e convergência.
-
-    Retorna:
-    - candidates: lista de (margin, result, checks) ordenada por margem
-    - convergence: dict com status de cada ponto inicial
-    """
-    low = reachable_price_path(
+    """Produz entradas independentes, mantendo custo, curva e preço anterior observados."""
+    return replace(
         problem,
-        direction="low",
-        initial_delta=initial_delta,
-        daily_delta=daily_delta,
+        daily_variation=problem.daily_variation * relaxation.daily_variation_factor,
+        initial_variation=problem.init_var * relaxation.initial_transition_factor,
+        tolerance_lower=problem.tol_lower * relaxation.tolerance_lower_factor,
+        tolerance_upper=problem.tol_upper * relaxation.tolerance_upper_factor,
+        targets={w: q * relaxation.target_nominal_factor for w, q in problem.targets.items()},
     )
-    high = reachable_price_path(
-        problem,
-        direction="high",
-        initial_delta=initial_delta,
-        daily_delta=daily_delta,
-    )
-
-    if low is None or high is None:
-        return {
-            "candidates": [],
-            "convergence": {},
-            "feasible": False,
-        }
-
-    # Gerar pontos iniciais com diversidade
-    starts = _generate_initial_points(low, high, n_starts, seed=seed)
-
-    # Resolver com cada ponto inicial
-    convergence = {}
-    candidates = []
-
-    constraints = _nonlinear_constraints(
-        problem,
-        initial_delta=initial_delta,
-        daily_delta=daily_delta,
-        enforce_targets=enforce_targets,
-    )
-    bounds = price_bounds(problem)
-
-    # Primeiro, verificar quais inícios são viáveis (antes de otimizar)
-    initial_feasibility = []
-    for i, start in enumerate(starts):
-        checks = validate_prices(
-            problem,
-            start,
-            initial_delta=initial_delta,
-            daily_delta=daily_delta,
-            enforce_targets=enforce_targets,
-        )
-        initial_feasibility.append(checks["satisfied"])
-
-    # Depois, otimizar cada início
-    n_converged = 0
-    for i, start in enumerate(starts):
-        result = minimize(
-            lambda prices: -float(margin_vector(problem, prices).sum()),
-            np.asarray(start),
-            method="SLSQP",
-            bounds=bounds,
-            constraints=constraints,
-            options={"ftol": 1e-9, "maxiter": 1500},
-        )
-
-        checks = validate_prices(
-            problem,
-            result.x,
-            initial_delta=initial_delta,
-            daily_delta=daily_delta,
-            enforce_targets=enforce_targets,
-        )
-
-        total_margin = float(margin_vector(problem, result.x).sum())
-        convergence[f"start_{i}"] = {
-            "initial_feasible": initial_feasibility[i],
-            "margin_rs": total_margin,
-            "satisfied": checks["satisfied"],
-        }
-
-        if checks["satisfied"]:
-            n_converged += 1
-            candidates.append((total_margin, result, checks))
-
-    return {
-        "candidates": candidates,
-        "convergence": convergence,
-        "feasible": len(candidates) > 0,
-        "n_converged": n_converged,
-        "n_starts": len(starts),
-    }
 
 
 def solve(
     problem: PriceProblem,
     relaxation: Relaxation | None = None,
     *,
-    n_starts: int = 10,
-    seed: int = 42,
     enforce_initial: bool = True,
     enforce_variation: bool = True,
     enforce_targets: bool = True,
+    time_limit: float = 30,
+    mip_gap: float = 1e-6,
 ) -> dict[str, Any]:
-    """Resolve o problema com relaxações aplicadas, usando n_starts pontos iniciais.
+    """Resolve e verifica com Gurobi; envelopes podem certificar a inviabilidade.
 
-    Quando relaxation=None, usa Relaxation() (identidade, sem folgas).
-
-    R1 e R2 são isoláveis:
-    - R1 (variação diária): problem.daily_variation * daily_variation_factor
-    - R2 (salto inicial): problem.daily_variation * initial_transition_factor
-
-    Retorna:
-    - status: 'optimal', 'infeasible', 'solver_failed'
-    - daily: DataFrame com preços, volumes e margem (None se infactível)
-    - weekly: Dict com volumes e margens por semana
-    - total_margin_rs: Margem total acumulada
-    - diagnostics: Detalhes de restrições e envelopes
-    - convergence: Dict com margens alcançadas por cada ponto inicial
-    - relaxation_applied: A instância de Relaxation usada
-    - slacks: Folgas de cada restrição
-    - active_constraints: Restrições ativas
+    Um envelope que intercepta a faixa semanal é apenas uma condição necessária.
+    A factibilidade é confirmada por um plano que passa na verificação do solver.
     """
-    if relaxation is None:
-        relaxation = Relaxation()
-
-    # Aplicar relaxações ao problema
-    relaxed_problem = apply_relaxation(problem, relaxation)
-
-    # Executar diagnóstico
-    # R2 (salto inicial) e R1 (variação diária) são independentes
-    initial_delta = relaxed_problem.init_var if enforce_initial else None
-    daily_delta = relaxed_problem.daily_variation if enforce_variation else None
-
+    relaxation = Relaxation() if relaxation is None else relaxation
+    relaxed = apply_relaxation(problem, relaxation)
     diagnostic = diagnose_feasibility(
-        relaxed_problem, initial_delta=initial_delta, daily_delta=daily_delta
+        relaxed,
+        initial_delta=relaxed.init_var if enforce_initial else None,
+        daily_delta=relaxed.daily_variation if enforce_variation else None,
     )
-
-    if enforce_targets and not diagnostic["potentially_feasible"]:
-        return {
+    scenario = Scenario(
+        "Flexibilização declarada",
+        enforce_daily_variation=enforce_variation,
+        enforce_weekly_targets=enforce_targets,
+        enforce_initial_anchor=enforce_initial,
+    )
+    if enforce_targets and diagnostic["status"] == "infeasible_targets":
+        result = {
+            "scenario": asdict(scenario),
+            "initial_price": relaxed.initial_price,
+            "model_core_sha256": relaxed.artifact.get("model_core_sha256"),
             "status": "infeasible",
+            "status_code": None,
+            "runtime": 0.0,
+            "gap": None,
+            "bound_rs": None,
+            "objective_rs": None,
+            "total_margin_rs": None,
             "daily": None,
             "weekly": None,
-            "total_margin_rs": None,
-            "diagnostics": diagnostic,
-            "convergence": {},
-            "relaxation_applied": relaxation,
-            "slacks": {},
-            "active_constraints": [],
+            "validation": None,
+            "certificate": "reachable_volume_bounds",
         }
+    else:
+        result = solve_scenario(relaxed, scenario, time_limit=time_limit, mip_gap=mip_gap)
+        result["certificate"] = "gurobi" if result["status"] in {"optimal", "infeasible"} else None
+    result["diagnostics"] = diagnostic
+    result["relaxation_applied"] = asdict(relaxation)
+    result["parameters"] = {
+        "daily_variation": relaxed.daily_variation,
+        "initial_variation": relaxed.init_var,
+        "tolerance_lower": relaxed.tol_lower,
+        "tolerance_upper": relaxed.tol_upper,
+        "targets": dict(relaxed.targets),
+    }
+    return result
 
-    # Multi-start
-    result = _multistart_optimization(
-        relaxed_problem,
-        initial_delta=initial_delta,
-        daily_delta=daily_delta,
-        enforce_targets=enforce_targets,
-        n_starts=n_starts,
-        seed=seed,
-    )
 
-    if not result["feasible"]:
+def summarize(result: dict[str, Any]) -> dict[str, Any]:
+    """Conserva status, certificado e folgas; não converte ausência de solução em inviabilidade."""
+    params = result["parameters"]
+    row = {
+        "case_id": result.get("case_id"),
+        "status": result["status"],
+        "certificate": result["certificate"],
+        "margem_prevista_rs": result["total_margin_rs"],
+        "limite_superior_margem_rs": result["bound_rs"],
+        "gap": result["gap"],
+        "tempo_solver_s": result["runtime"],
+        "variacao_interna_rs": params["daily_variation"],
+        "transicao_inicial_rs": params["initial_variation"],
+        "tolerancia_inferior": params["tolerance_lower"],
+        "tolerancia_superior": params["tolerance_upper"],
+        "ligacao_inicial_ativa": result["scenario"]["enforce_initial_anchor"],
+        "variacao_interna_ativa": result["scenario"]["enforce_daily_variation"],
+        "metas_ativas": result["scenario"]["enforce_weekly_targets"],
+        "model_core_sha256": result["model_core_sha256"],
+        "plano_verificado": bool(result["validation"] and result["validation"]["satisfied"]),
+    }
+    for w, target in params["targets"].items():
+        bounds = result["diagnostics"]["weeks"].get(w, {})
+        row.update(
+            {
+                f"{w}_meta_kg": target,
+                f"{w}_piso_kg": target * (1 - params["tolerance_lower"]),
+                f"{w}_teto_kg": target * (1 + params["tolerance_upper"]),
+                f"{w}_volume_minimo_alcancavel_kg": bounds.get("minimum_reachable_kg"),
+                f"{w}_volume_maximo_alcancavel_kg": bounds.get("maximum_reachable_kg"),
+                f"{w}_deficit_piso_kg": bounds.get("shortage_kg"),
+                f"{w}_excesso_teto_kg": bounds.get("excess_kg"),
+            }
+        )
+        if result["weekly"] is not None:
+            week = result["weekly"].set_index("semana").loc[w]
+            row.update(
+                {
+                    f"{w}_volume_previsto_kg": float(week["volume_previsto_kg"]),
+                    f"{w}_folga_piso_kg": float(week["folga_inferior_kg"]),
+                    f"{w}_folga_teto_kg": float(week["folga_superior_kg"]),
+                }
+            )
+    return row
+
+
+class RelaxationStudy:
+    """Reutiliza resultados de entradas idênticas dentro de um estudo congelado."""
+
+    def __init__(self, problem: PriceProblem, *, time_limit: float = 30, mip_gap: float = 1e-6):
+        self.problem = problem
+        self.time_limit = time_limit
+        self.mip_gap = mip_gap
+        self.results: dict[tuple, dict[str, Any]] = {}
+
+    def evaluate(
+        self,
+        relaxation: Relaxation | None = None,
+        *,
+        enforce_initial: bool = True,
+        enforce_variation: bool = True,
+        enforce_targets: bool = True,
+    ) -> dict[str, Any]:
+        relaxation = Relaxation() if relaxation is None else relaxation
+        key = (*asdict(relaxation).values(), enforce_initial, enforce_variation, enforce_targets)
+        if key not in self.results:
+            result = solve(
+                self.problem,
+                relaxation,
+                enforce_initial=enforce_initial,
+                enforce_variation=enforce_variation,
+                enforce_targets=enforce_targets,
+                time_limit=self.time_limit,
+                mip_gap=self.mip_gap,
+            )
+            result["case_id"] = f"c{len(self.results):04d}"
+            self.results[key] = result
+        return self.results[key]
+
+    def relaxation_at(self, rule: str, value: float) -> Relaxation:
+        """Recebe valores absolutos de R$/kg ou frações de tolerância."""
+        names = {
+            "daily_variation": ("daily_variation_factor", self.problem.daily_variation),
+            "initial_transition": ("initial_transition_factor", self.problem.init_var),
+            "tolerance_lower": ("tolerance_lower_factor", self.problem.tol_lower),
+            "tolerance_upper": ("tolerance_upper_factor", self.problem.tol_upper),
+        }
+        if rule not in names:
+            raise ValueError(f"Regra desconhecida: {rule}")
+        name, nominal = names[rule]
+        if nominal <= 0:
+            raise ValueError("A parametrização por fatores exige limite nominal positivo.")
+        return Relaxation(**{name: float(value) / nominal})
+
+    def minimum(
+        self,
+        rule: str,
+        *,
+        upper: float,
+        precision: float = 1e-3,
+    ) -> dict[str, Any]:
+        """Delimita o mínimo entre um caso inviável provado e um plano factível.
+
+        Somente limites que geram conjuntos admissíveis aninhados são aceitos.
+        Alterar a meta nominal não possui essa propriedade.
+        """
+        nominal = {
+            "daily_variation": self.problem.daily_variation,
+            "initial_transition": self.problem.init_var,
+            "tolerance_lower": self.problem.tol_lower,
+            "tolerance_upper": self.problem.tol_upper,
+        }
+        if rule not in nominal:
+            raise ValueError("O mínimo exige uma regra de flexibilização monotônica.")
+        if not np.isfinite(upper) or not np.isfinite(precision) or precision <= 0:
+            raise ValueError("Limite superior e precisão devem ser finitos; precisão positiva.")
+        low, high = nominal[rule], float(upper)
+        if high <= low:
+            raise ValueError("O limite superior deve superar o nominal.")
+
+        def decision(value):
+            result = self.evaluate(self.relaxation_at(rule, value))
+            if result["validation"] and result["validation"]["satisfied"]:
+                return True, result
+            if result["status"] == "infeasible":
+                return False, result
+            raise RuntimeError(
+                f"Viabilidade não determinada: {result['status']} em {rule}={value}."
+            )
+
+        base_ok, base = decision(low)
+        high_ok, high_result = decision(high)
+        if base_ok:
+            return {
+                "rule": rule,
+                "status": "already_feasible",
+                "minimum": low,
+                "infeasible_value": None,
+                "feasible_value": low,
+                "precision": precision,
+                "case_id": base["case_id"],
+                "margem_prevista_rs": base["total_margin_rs"],
+            }
+        if not high_ok:
+            return {
+                "rule": rule,
+                "status": "no_recovery_in_range",
+                "minimum": None,
+                "infeasible_value": high,
+                "feasible_value": None,
+                "precision": precision,
+                "case_id": high_result["case_id"],
+                "margem_prevista_rs": None,
+            }
+        while high - low > precision:
+            middle = (low + high) / 2
+            ok, result = decision(middle)
+            if ok:
+                high, high_result = middle, result
+            else:
+                low = middle
         return {
-            "status": "solver_failed",
-            "daily": None,
-            "weekly": None,
-            "total_margin_rs": None,
-            "diagnostics": diagnostic,
-            "convergence": result["convergence"],
-            "relaxation_applied": relaxation,
-            "slacks": {},
-            "active_constraints": [],
+            "rule": rule,
+            "status": "bracketed",
+            "minimum": high,
+            "infeasible_value": low,
+            "feasible_value": high,
+            "precision": precision,
+            "case_id": high_result["case_id"],
+            "margem_prevista_rs": high_result["total_margin_rs"],
         }
 
-    # Melhor candidato
-    total_margin, optimizer_result, checks = max(
-        result["candidates"], key=lambda item: item[0]
-    )
-    prices = np.asarray(optimizer_result.x)
-    volumes = demand_vector(relaxed_problem, prices)
-    margins = margin_vector(relaxed_problem, prices)
+    def table(self) -> pd.DataFrame:
+        return pd.DataFrame(summarize(result) for result in self.results.values())
 
-    daily = pd.DataFrame(
-        {
-            "data": relaxed_problem.dates,
-            "dia_semana": relaxed_problem.weekdays,
-            "semana": relaxed_problem.weeks,
-            "preco_kg": prices,
-            "volume_previsto_kg": volumes,
-            "custo_kg": relaxed_problem.costs,
-            "margem_rs": margins,
-        }
-    )
 
-    weekly = {}
-    for week in dict.fromkeys(relaxed_problem.weeks):
-        mask = np.array(relaxed_problem.weeks) == week
-        weekly[week] = {
-            "volume_kg": float(volumes[mask].sum()),
-            "margem_rs": float(margins[mask].sum()),
-            "target_kg": relaxed_problem.targets[week],
-        }
+def pareto_feasible(frame: pd.DataFrame, costs: list[str]) -> pd.DataFrame:
+    """Retorna combinações factíveis não dominadas nas folgas operacionais da grade.
 
-    # Extrair folgas e restrições ativas de validate_prices
-    slacks = {
-        "support": checks["minimum_support_slack"],
-        "initial_change": initial_delta - checks["initial_change"] if initial_delta else None,
-        "maximum_daily_change": (
-            daily_delta - checks["maximum_daily_change"] if daily_delta else None
-        ),
-        "weeks": checks["weeks"],
-    }
-
-    active_constraints = []
-    if initial_delta and checks["initial_change"] >= initial_delta - 1e-6:
-        active_constraints.append("initial_transition")
-    if daily_delta and checks["maximum_daily_change"] >= daily_delta - 1e-6:
-        active_constraints.append("daily_variation")
-    for week, week_check in checks["weeks"].items():
-        if week_check["lower_slack_kg"] <= 1e-6:
-            active_constraints.append(f"target_lower_{week}")
-        if week_check["upper_slack_kg"] <= 1e-6:
-            active_constraints.append(f"target_upper_{week}")
-
-    return {
-        "status": "optimal",
-        "daily": daily,
-        "weekly": weekly,
-        "total_margin_rs": total_margin,
-        "diagnostics": diagnostic,
-        "convergence": result["convergence"],
-        "convergence_summary": {
-            "n_starts": result["n_starts"],
-            "n_converged": result["n_converged"],
-            "convergence_rate": result["n_converged"] / result["n_starts"] if result["n_starts"] > 0 else 0.0,
-        },
-        "relaxation_applied": relaxation,
-        "slacks": slacks,
-        "active_constraints": active_constraints,
-    }
+    A margem é reportada, mas não entra na dominância entre as alterações de regra.
+    """
+    candidates = frame.loc[frame["plano_verificado"]].copy()
+    if candidates.empty:
+        return candidates
+    values = candidates[costs].to_numpy(dtype=float)
+    keep = [
+        not np.any(np.all(values <= row + 1e-9, axis=1) & np.any(values < row - 1e-9, axis=1))
+        for row in values
+    ]
+    return candidates.loc[keep].sort_values(costs).reset_index(drop=True)

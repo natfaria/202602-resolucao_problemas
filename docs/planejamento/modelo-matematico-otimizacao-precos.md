@@ -222,3 +222,15 @@ painéis identificam data e semana. Os trechos externos ao suporte, quando mostr
 Os pontos otimizados pertencem à curva por construção. A distância dos pontos reais à curva
 informa o erro preditivo nos preços praticados, mas o teste não revela o volume que teria sido
 vendido nos preços recomendados. Assim, a comparação não comprova ganho financeiro realizado.
+
+## 11. Entradas persistidas e flexibilizações graduais
+
+As entradas econômicas, operacionais e de calendário são publicadas em
+`models/otimizacao/entradas_planejamento.json`, com referências e hashes da curva, do treino e das
+restrições. `src/optimization/planning_inputs.py` salva e carrega esse contrato.
+
+O estudo de flexibilizações recebe o artefato e resolve o mesmo objetivo sob limites alterados.
+A primeira mudança e a variação interna podem ser ampliadas independentemente; piso e teto podem
+ser alterados separadamente. Reduzir a meta nominal desloca os dois limites e não equivale a
+ampliar uma folga. Os mínimos são delimitados por inviabilidade provada e plano verificado.
+O procedimento está descrito em `plano-simulacao-relaxacoes.md`.
