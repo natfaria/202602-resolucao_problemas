@@ -1,6 +1,16 @@
 site_name: Resolução de Problemas via Modelagem Matemática 2026
 #
 site_author: Projeto Minerva
+docs_dir: .
+site_dir: ../site
+hooks:
+  - hooks.py
+exclude_docs: |
+  /antigos/
+  /site/
+  /README.md
+  /planejamento/modelo-otimizacao-precos.md
+  /planejamento/visualizacoes-modelo-otimizacao.md
 
 markdown_extensions:
   - pymdownx.arithmatex:
@@ -10,8 +20,13 @@ extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 nav:
-  - Início: index.md
-  - Primeiros passos: getting-started.md
-  - Plano de ação: plano-acao-tres-notebooks.md
-  - Modelo matemático: modelo-matematico-otimizacao-precos.md
+  - Início: planejamento/index.md
+  - Primeiros passos: planejamento/getting-started.md
+  - Etapas e contratos: planejamento/plano-acao-tres-notebooks.md
+  - Modelo matemático: planejamento/modelo-matematico-otimizacao-precos.md
+  - Resultados operacionais: planejamento/resultados-operacionais.md
+  - Otimização de referência: planejamento/plano-otimizador-margem.md
+  - Flexibilizações: planejamento/plano-simulacao-relaxacoes.md
+  - Exploração dos dados: storytelling/storytelling-eda-minerva.md
   - Storytelling da curva de demanda: storytelling/curva-de-demanda-modelo-2-0.md
+  - Referências: referencias-bibliograficas.md

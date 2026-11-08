@@ -1,8 +1,10 @@
-# Planejamento de preços e demanda — Minerva
+# Planejamento de preços e demanda: Minerva
 
 Projeto de modelagem matemática para prever demanda e escolher preços diários de `Produto_A`
 em um horizonte de duas semanas, maximizando a margem de contribuição prevista sob restrições
 comerciais. As etapas se comunicam por arquivos persistidos, com verificação de integridade.
+
+**Conclusão principal:** o caso com todas as regras originais é inviável sob a previsão central. As recuperações mínimas e as sensibilidades estão no [resumo operacional](docs/planejamento/resultados-operacionais.md).
 
 ## Fluxo de execução
 
@@ -32,6 +34,9 @@ partir de `requirements.txt`, as etapas de previsão e decisão podem ser reprod
 A resolução utiliza Gurobi 13 via `gurobipy`. Cada notebook executa com um kernel limpo e seus
 arquivos de entrada, sem depender de variáveis de outra sessão.
 
+Os relatórios são atualizados após a execução por `.venv/bin/python scripts/update_project_report.py`.
+O benchmark de calendário e a sensibilidade de premissas são análises adicionais; não alteram a curva central selecionada.
+
 ## Artefatos
 
 - `data/raw/`: fontes originais.
@@ -51,3 +56,7 @@ arquivos de entrada, sem depender de variáveis de outra sessão.
 O funcionamento, as premissas e a divisão das etapas estão em
 [Planejamento do projeto](docs/planejamento/index.md). Cada plano exportado conserva sua curva,
 suas entradas e suas condições operacionais. Margens são previsões condicionais ao modelo.
+
+
+Para instalação e documentação, veja [Instruções de reprodução](docs/planejamento/getting-started.md).
+O notebook `2.0-minerva-modelo-preditivo.ipynb` e as pastas `antigos/` são versões anteriores, fora da entrega atual.

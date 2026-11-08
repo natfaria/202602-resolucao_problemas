@@ -1,4 +1,6 @@
-# Relatório de EDA — Estrutura da Demanda e Seleção do Modelo OLS
+> **Versão histórica, fora da entrega atual.** Modelos, métricas e hipóteses deste arquivo pertencem a experimentos anteriores. Consulte a [narrativa atual](../storytelling/curva-de-demanda-modelo-2-0.md).
+
+# Relatório de EDA: Estrutura da Demanda e Seleção do Modelo OLS
 
 Este relatório descreve a análise exploratória que conduz à especificação da curva de demanda do produto. A análise completa, com tabelas, gráficos e células executáveis, está no notebook [01-EDA-ols-validacao.ipynb](../notebooks/01-EDA-ols-validacao.ipynb).
 

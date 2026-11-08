@@ -54,7 +54,7 @@ portanto, a alíquota de 7% é uma premissa econômica, não uma medida reconstr
 - $W=\{1,2\}$ contém as semanas; $T_1=\{1,\ldots,5\}$ e $T_2=\{6,\ldots,10\}$.
 - $c(t)$ identifica o contexto do dia: segunda a quinta ou sexta.
 - $p^0$ é o preço anterior observado ou o valor hipotético declarado no cenário.
-- $c$ é o custo unitário fixo; $\tau=0{,}07$ é a alíquota sobre receita.
+- $c$ é o custo unitário constante; $\tau=0{,}07$ é a alíquota sobre receita.
 - $L_w$ e $U_w$ são os limites semanais obtidos da meta e tolerância.
 - $\Delta=2$ limita as mudanças internas; $\Delta_0=2$ limita a primeira mudança.
 - $[\underline p_{c(t)},\overline p_{c(t)}]$ é o suporte observado do contexto.
@@ -234,3 +234,18 @@ A primeira mudança e a variação interna podem ser ampliadas independentemente
 ser alterados separadamente. Reduzir a meta nominal desloca os dois limites e não equivale a
 ampliar uma folga. Os mínimos são delimitados por inviabilidade provada e plano verificado.
 O procedimento está descrito em `plano-simulacao-relaxacoes.md`.
+
+
+## 12. Propriedades matemáticas e terminologia
+
+Para $D(p)=Ap^\beta$, $A>0$, $p>0$ e $\beta<0$, tem-se $D''(p)=A\beta(\beta-1)p^{\beta-2}>0$. A demanda é convexa em preço. Com $x=\ln p$, $D(e^x)=Ae^{\beta x}$ também é convexa, enquanto $\ln D$ é afim em $x$. As curvas por contexto são paralelas em eixos log-log. A receita reescrita em volume é côncava para $\beta<-1$, mas o problema completo inclui relações não lineares de igualdade e não é declarado convexo.
+
+Neste texto, regra ativa no cenário significa regra imposta. Uma restrição vinculante na solução tem folga nula dentro das tolerâncias numéricas; a positividade de preço não está vinculante no suporte positivo observado. Volume previsto não deve ser denominado volume realizado.
+
+## 13. Sensibilidade das premissas
+
+O notebook `3.0` reavalia demanda (80%/120%), custo unitário (95%/105%), imposto (0%/14%) e elasticidade nos limites HC3 do desenvolvimento. A mudança de elasticidade preserva o volume de referência em R$ 1.300/kg em cada contexto. Cada cenário tem curva e hash próprios em memória, sem sobrescrever o artefato central. Os valores são hipóteses de estresse, sem probabilidades atribuídas ou interpretação de intervalo preditivo conjunto.
+
+A tabela distingue regras originais e primeira ligação removida. Além da reotimização, avalia o plano central fixo sob as novas premissas, registrando margem e atendimento das metas. Essa avaliação pressupõe primeira ligação removida. O teste não define as premissas. Resultados estão em `reports/tables/03_sensibilidade_premissas.csv` e no [resumo operacional](resultados-operacionais.md).
+
+A estimação segue Phillips (2021, cap. 4); retransformação e covariância seguem Duan (1983) e MacKinnon e White (1985). A resolução global segue a documentação Gurobi 13.0. Consulte as [referências completas](../referencias-bibliograficas.md).

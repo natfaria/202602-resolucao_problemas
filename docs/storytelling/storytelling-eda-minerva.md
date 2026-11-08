@@ -52,7 +52,7 @@ reconstruídos:
 - `custo_kg = custo / volume`;
 - `margem_unitaria_ex_post = preco_kg - custo_kg`.
 
-Preço e calendário podem contribuir para a previsão de volume porque são informações disponíveis no
+Preço candidato e calendário podem contribuir para a previsão de volume porque são informações disponíveis no
 momento da decisão. Receita e margem realizadas são consequências do preço e do volume observados;
 usá-las como explicativas da demanda criaria uma relação circular. O custo será importante para a
 função de margem da otimização, mas não entra automaticamente como explicação do comportamento do
@@ -239,10 +239,10 @@ Ele não permite concluir que:
 ## 14. Materiais relacionados
 
 - Notebook executado: `notebooks/1.0-minerva-eda-preparacao.ipynb`.
-- Plano metodológico: `docs/docs/plano-acao-tres-notebooks.md`.
+- Plano metodológico: `docs/planejamento/plano-acao-tres-notebooks.md`.
 - Documento do Desafio Minerva-Unifesp-ITA: `docs/referencias/Minerva_Unifesp_ITA.pdf`.
 - PHILLIPS, Robert L. *Pricing and Revenue Optimization*. 2. ed.
-- MULLAPUDI, Pavan Nithin. *Pricing Optimization across Domains*.
+- [Referências metodológicas completas](../referencias-bibliograficas.md).
 
 ## Resumo Alto Nível
 - A base é utilizável: não há dados ausentes, duplicados ou valores inválidos nas 76 observações de desenvolvimento.
@@ -255,3 +255,13 @@ Ele não permite concluir que:
 - Os pontos extremos não devem ser removidos automaticamente: vários pertencem a um episódio temporal coerente de outubro.
 - A interpretação não é causal: faltam informações como estoque, promoções, concorrência, clima e preço de lista.
 - Nenhum modelo foi escolhido no EDA: a hipótese inicial mais defensável é uma elasticidade compartilhada, com diferentes níveis de demanda por contexto de calendário, a ser validada temporalmente no Notebook 2.
+
+
+## Escopo e avaliação temporal
+
+O planejamento de dez dias úteis é uma delimitação deste estudo, não uma conclusão sobre
+fechamento da operação nos fins de semana. O histórico contém vendas em dez desses dias;
+a ausência nos outros não foi convertida em zero. A seleção é condicional às hipóteses
+formuladas no desenvolvimento completo e não representa validação aninhada de todo o processo.
+Salvar o modelo antes de carregar o holdout comprova a ordem da execução atual, sem certificar
+que as mesmas datas nunca foram consultadas por versões anteriores.
