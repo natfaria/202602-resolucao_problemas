@@ -59,4 +59,5 @@ suas entradas e suas condições operacionais. Margens são previsões condicion
 
 
 Para instalação e documentação, veja [Instruções de reprodução](docs/planejamento/getting-started.md).
-O notebook `2.0-minerva-modelo-preditivo.ipynb` e as pastas `antigos/` são versões anteriores, fora da entrega atual.
+Somente os quatro notebooks listados compõem a entrega. Modelos históricos necessários aos testes
+ficam em `tests/fixtures/legacy/`, separados dos modelos usados na execução.

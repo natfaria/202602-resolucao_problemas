@@ -186,7 +186,7 @@ Gurobi com limitantes globais e tolerância numérica explícita.
 1. Em cada rodada, os dez preços são planejados conjuntamente antes de observar as vendas futuras.
    No uso operacional combinado, executa-se a primeira semana e replaneja-se semanalmente;
    a segunda é cauda, recalculada com a instância atualizada. Os notebooks demonstram uma rodada
-   isolada, sem automatizar o ciclo semanal. Veja o [esquema de uso](resultados-operacionais.md#uso-operacional-planejar-duas-semanas-e-executar-uma).
+   isolada, sem automatizar o ciclo semanal. Veja o [esquema de uso](../storytelling/storytelling-otimizacao-minerva.md#uso-operacional-planejar-duas-semanas-e-executar-uma).
 2. A curva de demanda está congelada e descreve uma associação observacional; não é uma garantia
    de resposta causal à mudança de preço.
 3. O volume previsto pode ser integralmente atendido. Estoque, capacidade, validade e ruptura são
@@ -249,6 +249,6 @@ Neste texto, regra ativa no cenário significa regra imposta. Uma restrição vi
 
 O notebook `3.0` reavalia demanda (80%/120%), custo unitário (95%/105%), imposto (0%/14%) e elasticidade nos limites HC3 do desenvolvimento. A mudança de elasticidade preserva o volume de referência em R$ 1.300/kg em cada contexto. Cada cenário tem curva e hash próprios em memória, sem sobrescrever o artefato central. Os valores são hipóteses de estresse, sem probabilidades atribuídas ou interpretação de intervalo preditivo conjunto.
 
-A tabela distingue regras originais e primeira ligação removida. Além da reotimização, avalia o plano central fixo sob as novas premissas, registrando margem e atendimento das metas. Essa avaliação pressupõe primeira ligação removida. O teste não define as premissas. Resultados estão em `reports/tables/03_sensibilidade_premissas.csv` e no [resumo operacional](resultados-operacionais.md).
+A tabela distingue regras originais e primeira ligação removida. Além da reotimização, avalia o plano central fixo sob as novas premissas, registrando margem e atendimento das metas. Essa avaliação pressupõe primeira ligação removida. O teste não define as premissas. Resultados estão em `reports/tables/03_sensibilidade_premissas.csv` e no [storytelling da otimização](../storytelling/storytelling-otimizacao-minerva.md).
 
 A estimação segue Phillips (2021, cap. 4); retransformação e covariância seguem Duan (1983) e MacKinnon e White (1985). A resolução global segue a documentação Gurobi 13.0. Consulte as [referências completas](../referencias-bibliograficas.md).

@@ -203,8 +203,8 @@ futura. O realizado não revela o volume que seria vendido nos preços escolhido
 ## 8. Controle de versões e artefatos
 
 O otimizador lê `models/preditivo_diario/curva_demanda.json`, de núcleo
-`d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385`. Os artefatos `demand_curve_champion*.json`, seus cenários de incerteza
-antigos e o notebook `2.0` anterior não são entradas da trilha atual. Coeficientes idênticos em duas
+`d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385`. Os modelos de compatibilidade em `tests/fixtures/legacy/` são usados
+somente pelos testes e não são entradas da trilha atual. Coeficientes idênticos em duas
 implementações sobre os mesmos dados demonstram concordância do ajuste, não replicação independente.
 Não se combinam multiplicadores de incerteza de núcleos diferentes.
 

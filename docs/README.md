@@ -16,5 +16,5 @@ Na raiz do repositório:
 .venv/bin/python -m mkdocs build --config-file docs/mkdocs.yml --strict
 ```
 
-Os relatórios gerados usam as saídas dos quatro notebooks atuais. `antigos/` contém versões
-históricas e não integra o site. Seus números não devem ser combinados com a curva atual.
+Os relatórios gerados usam as saídas dos quatro notebooks atuais. Os únicos modelos históricos
+mantidos ficam em `tests/fixtures/legacy/` para testes de compatibilidade e regressão.

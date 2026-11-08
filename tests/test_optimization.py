@@ -20,8 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture(scope="module")
 def minerva_problem():
-    artifact = load_artifact(ROOT / "models/demand_curve_champion_livro.json")
-    uncertainty = load_artifact(ROOT / "models/demand_curve_uncertainty_livro.json")
+    artifact = load_artifact(ROOT / "tests/fixtures/legacy/demand_curve_champion_livro.json")
+    uncertainty = load_artifact(ROOT / "tests/fixtures/legacy/demand_curve_uncertainty_livro.json")
     development = pd.read_csv(
         ROOT / "data/processed/minerva_modelagem_treino.csv", parse_dates=["data"]
     )

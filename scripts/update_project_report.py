@@ -318,8 +318,8 @@ futura. O realizado não revela o volume que seria vendido nos preços escolhido
 ## 8. Controle de versões e artefatos
 
 O otimizador lê `models/preditivo_diario/curva_demanda.json`, de núcleo
-`{model["model_core_sha256"]}`. Os artefatos `demand_curve_champion*.json`, seus cenários de incerteza
-antigos e o notebook `2.0` anterior não são entradas da trilha atual. Coeficientes idênticos em duas
+`{model["model_core_sha256"]}`. Os modelos de compatibilidade em `tests/fixtures/legacy/` são usados
+somente pelos testes e não são entradas da trilha atual. Coeficientes idênticos em duas
 implementações sobre os mesmos dados demonstram concordância do ajuste, não replicação independente.
 Não se combinam multiplicadores de incerteza de núcleos diferentes.
 
@@ -561,29 +561,11 @@ a [otimização de referência](../planejamento/plano-otimizador-margem.md) e o
 [estudo de flexibilizações](../planejamento/plano-simulacao-relaxacoes.md).
 As figuras e tabelas deste documento usam a sequência própria `R3`.
 """
-    results_pointer = """# Resultados operacionais: localização do storytelling
-
-<!-- Gerado por scripts/update_project_report.py. -->
-
-O relato completo da decisão de preços está em
-[Da curva de demanda ao plano de preços: a história da otimização](../storytelling/storytelling-otimizacao-minerva.md).
-O documento reúne funcionamento, inviabilidade, flexibilizações, alternativas, sensibilidades e
-limites de interpretação, com figuras explicativas e resultados atualizados dos notebooks.
-
-Este caminho permanece disponível para preservar referências anteriores.
-
-## Uso operacional: planejar duas semanas e executar uma
-
-O [esquema de horizonte rolante](../storytelling/storytelling-otimizacao-minerva.md#uso-operacional-planejar-duas-semanas-e-executar-uma)
-explica o combinado: otimizar duas semanas, executar a primeira e replanejar semanalmente.
-A segunda semana é cauda e é recalculada com a instância atualizada antes de se tornar executável.
-"""
     story = story.replace("../assets/", "../../reports/")
     results = results.replace("../assets/", "../../reports/")
     return {
         "docs/storytelling/curva-de-demanda-modelo-2-0.md": story,
         "docs/storytelling/storytelling-otimizacao-minerva.md": results,
-        "docs/planejamento/resultados-operacionais.md": results_pointer,
     }
 
 

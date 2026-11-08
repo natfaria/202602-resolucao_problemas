@@ -132,8 +132,8 @@ def test_uncertainty_must_belong_to_the_same_model_core(artifact):
 
 def test_real_version_1_bundle_and_training_data_are_reproducible():
     artifact, uncertainty = load_artifact_bundle(
-        ROOT / "models/demand_curve_champion_livro.json",
-        ROOT / "models/demand_curve_uncertainty_livro.json",
+        ROOT / "tests/fixtures/legacy/demand_curve_champion_livro.json",
+        ROOT / "tests/fixtures/legacy/demand_curve_uncertainty_livro.json",
     )
 
     assert artifact["artifact_version"] == 1

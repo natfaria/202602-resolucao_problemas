@@ -38,4 +38,5 @@ e sensibilidade. Ele não ajusta modelos nem consulta diretamente o holdout.
 ```
 
 `docs/hooks.py` incorpora figuras e tabelas diretamente de `reports/`. O HTML em `site/`
-é gerado. Os documentos e notebooks antigos não definem a entrega atual.
+é gerado. Somente os quatro notebooks listados definem a entrega atual; modelos históricos
+usados pelos testes ficam em `tests/fixtures/legacy/`.

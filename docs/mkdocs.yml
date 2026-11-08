@@ -6,11 +6,8 @@ site_dir: ../site
 hooks:
   - hooks.py
 exclude_docs: |
-  /antigos/
   /site/
   /README.md
-  /planejamento/modelo-otimizacao-precos.md
-  /planejamento/visualizacoes-modelo-otimizacao.md
 
 markdown_extensions:
   - pymdownx.arithmatex:

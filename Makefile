@@ -64,7 +64,7 @@ create_environment:
 ## Make dataset
 .PHONY: data
 data: requirements
-	$(PYTHON_INTERPRETER) src/dataset.py
+	$(PYTHON_INTERPRETER) -m jupyter nbconvert --to notebook --execute --inplace notebooks/1.0-minerva-eda-preparacao.ipynb --ExecutePreprocessor.timeout=300
 
 
 #################################################################################

@@ -22,7 +22,11 @@ def problem(request):
         ROOT / "data/processed/minerva_modelagem_treino.csv", parse_dates=["data"]
     ).sort_values("data")
     return problem_from_frames(
-        load_artifact(ROOT / "models" / request.param / "curva_demanda.json"),
+        load_artifact(
+            ROOT / "tests/fixtures/legacy/curva_demanda_preditivo.json"
+            if request.param == "preditivo"
+            else ROOT / "models/preditivo_diario/curva_demanda.json"
+        ),
         pd.read_csv(ROOT / "data/interim/minerva_restricoes.csv"),
         unit_cost=float(training.iloc[-1]["custo_kg"]),
         initial_price=float(training.iloc[-1]["preco_kg"]),

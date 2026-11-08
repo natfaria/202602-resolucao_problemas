@@ -1,5 +1,0 @@
-Desafiante,Vitórias semanais,Dif. média WMAPE semanal (p.p.),Pior dif. semanal (p.p.),Melhor dif. semanal (p.p.),p-valor teste do sinal,Vitórias diárias,Dif. média WMAPE diário (p.p.),Válido,Sinal do lag estável,Promovido
-P0,0 de 6,9.654649378479307,25.710116288205647,0.6488792497625961,1.0,0 de 6,32.99060280401302,True,True,False
-P1,2 de 6,4.397071172026932,12.277074627793633,-1.9121726536914436,0.890625,0 de 6,13.12888581524886,True,True,False
-P2,3 de 6,0.2528863040523405,3.4961013222045034,-2.0505948304778308,0.65625,0 de 6,4.316026956950393,True,True,False
-P4,4 de 6,0.09681412323275843,2.4790016417872733,-1.526280360031984,0.34375,1 de 6,1.8533640185766198,True,True,False
