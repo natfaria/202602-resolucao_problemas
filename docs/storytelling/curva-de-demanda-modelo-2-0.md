@@ -13,7 +13,7 @@ calendário no ajuste e quatro coeficientes. O domínio publicado é segunda a s
 O WMAPE diário médio nos seis folds é **36,85%**. No holdout histórico,
 o WMAPE diário é **37,24%** e o semanal é **18,55%**.
 Esses erros descrevem desempenho observado; não estabelecem suficiência para uso comercial ou
-uma garantia de atendimento das metas. Os [resultados operacionais](../planejamento/resultados-operacionais.md)
+uma garantia de atendimento das metas. A [história da otimização](storytelling-otimizacao-minerva.md)
 mostram que o caso com todas as regras originais é inviável.
 
 ## 2. Dados, calendário e hipóteses
@@ -41,6 +41,8 @@ O protocolo usa seis origens semanais, ajuste expansivo e horizonte de 14 dias c
 dias úteis avaliados por origem. Coeficientes e smearing são calculados apenas no passado daquele
 fold; não há atualização dentro do horizonte. Essa separação segue Hyndman e Athanasopoulos
 (2021, seção 5.10), nas [referências](../referencias-bibliograficas.md).
+Essa é a regra de avaliação das previsões. O uso operacional, com execução de uma semana e
+replanejamento semanal, está explicado na [história da otimização](storytelling-otimizacao-minerva.md#uso-operacional-planejar-duas-semanas-e-executar-uma).
 
 **Tabela R2.1.** Calendário da avaliação; fonte: `calendario_validacao_cruzada.csv`.
 
@@ -82,15 +84,15 @@ operacional, não um teste estatístico de equivalência. `T1` é somente sensib
 | T1 | 5 | 51,00 | 16,96 | Sim | Não |
 | P0 | 2 | 53,10 | 19,42 | Sim | Não |
 
-![Figura R2.2: comparação dos candidatos](../../reports/figures/preditivo_diario/comparacao_candidatos.png)
-
-**Figura R2.2.** WMAPE diário médio e por fold; barras de erro representam desvio-padrão entre
-origens, sem interpretação de intervalo de confiança. Fonte: notebook `2.0.1`.
-
 `E1` tem WMAPE ligeiramente menor que `P3`; ambos pertencem à zona prática. `P3` é escolhido
 pela interpretação direta da elasticidade, com o mesmo número de parâmetros. A diferença não
 estabelece superioridade estatística. Separar a segunda-feira em `P4` não melhora a métrica
 principal nesses folds; isso não demonstra igualdade entre os dias.
+
+![Figura R2.2: comparação dos candidatos por fold](../../reports/figures/preditivo_diario/comparacao_candidatos.png)
+
+**Figura R2.2.** WMAPE diário médio e por fold. As barras de erro mostram desvio-padrão entre
+origens, sem interpretação de intervalo de confiança. Fonte: notebook `2.0.1`.
 
 Como referência adicional, a média histórica do mesmo dia da semana, sem preço, tem WMAPE diário
 médio de **59,70%**, contra **36,85%** de `P3`. O benchmark é
@@ -140,10 +142,10 @@ Há evidência de heterocedasticidade no teste Breusch-Pagan com variante studen
 curta não detectam evidência forte nos lags examinados; isso não garante independência temporal.
 A retirada de uma observação por vez preserva o sinal negativo, mas altera a magnitude da elasticidade.
 
-![Figura R2.3: diagnósticos](../../reports/figures/preditivo_diario/diagnosticos.png)
+![Figura R2.3: diagnósticos do ajuste](../../reports/figures/preditivo_diario/diagnosticos.png)
 
-**Figura R2.3.** Resíduos, QQ-plot e influência nas 76 observações de ajuste. Os limiares de Cook
-sinalizam investigação e não determinam exclusão automática. Fonte: notebook `2.0.1`.
+**Figura R2.3.** Resíduos, QQ-plot e influência nas 76 observações. Os limiares de Cook sinalizam
+investigação e não determinam exclusão automática. Fonte: notebook `2.0.1`.
 
 **Tabela R2.5.** Faixas observadas usadas como limites de aplicação; fonte: artefato preditivo.
 
@@ -154,7 +156,8 @@ sinalizam investigação e não determinam exclusão automática. Fonte: noteboo
 
 ![Figura R2.4: curvas e dados](../../reports/figures/preditivo_diario/curvas_suporte.png)
 
-**Figura R2.4.** Preço em R$/kg e volume em kg/dia nos dois contextos admitidos. Fonte: notebook `2.0.1`.
+**Figura R2.4.** No mesmo preço, a sexta tem menor volume previsto que segunda a quinta.
+Os pontos mostram a dispersão que a curva não explica. Fonte: notebook `2.0.1`.
 
 Permanecer entre os preços mínimo e máximo observados reduz extrapolação, mas não garante
 precisão, suporte denso no interior da faixa ou identificação causal. O preço pode responder à
@@ -189,7 +192,8 @@ condicional a esse catálogo, sem validação aninhada de todo o processo explor
 
 ![Figura R2.5: holdout](../../reports/figures/preditivo_diario/holdout.png)
 
-**Figura R2.5.** Observado e previsto nos preços efetivamente praticados. Fonte: notebook `2.0.1`.
+**Figura R2.5.** O previsto acompanha parte da variação diária, mas subestima os totais das duas
+semanas. A comparação usa os preços efetivamente praticados. Fonte: notebook `2.0.1`.
 
 As duas semanas são subestimadas. O WMAPE semanal coincide com o módulo do viés agregado porque
 os erros dos dois totais têm o mesmo sinal; erros diários ainda podem se compensar dentro de

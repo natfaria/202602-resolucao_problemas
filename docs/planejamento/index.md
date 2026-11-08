@@ -1,6 +1,6 @@
 # Planejamento e funcionamento do projeto
 
-[Resultados e conclusão operacional](resultados-operacionais.md): o caso original é inviável; as exceções mínimas e as sensibilidades são apresentadas com suas condições.
+[Storytelling da otimização](../storytelling/storytelling-otimizacao-minerva.md): o caso original é inviável; as exceções mínimas, as sensibilidades e o uso em horizonte rolante são apresentados com suas condições.
 
 O fluxo conecta preparação de dados, previsão de demanda, otimização de preços e estudo de
 flexibilizações por artefatos persistidos e verificados.

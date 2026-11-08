@@ -165,7 +165,7 @@ calendário no ajuste e quatro coeficientes. O domínio publicado é segunda a s
 O WMAPE diário médio nos seis folds é **{number(chosen["WMAPE diário (%)"])}%**. No holdout histórico,
 o WMAPE diário é **{number(holdout["WMAPE diário (%)"])}%** e o semanal é **{number(holdout["WMAPE semanal (%)"])}%**.
 Esses erros descrevem desempenho observado; não estabelecem suficiência para uso comercial ou
-uma garantia de atendimento das metas. Os [resultados operacionais](../planejamento/resultados-operacionais.md)
+uma garantia de atendimento das metas. A [história da otimização](storytelling-otimizacao-minerva.md)
 mostram que o caso com todas as regras originais é inviável.
 
 ## 2. Dados, calendário e hipóteses
@@ -193,6 +193,8 @@ O protocolo usa seis origens semanais, ajuste expansivo e horizonte de 14 dias c
 dias úteis avaliados por origem. Coeficientes e smearing são calculados apenas no passado daquele
 fold; não há atualização dentro do horizonte. Essa separação segue Hyndman e Athanasopoulos
 (2021, seção 5.10), nas [referências](../referencias-bibliograficas.md).
+Essa é a regra de avaliação das previsões. O uso operacional, com execução de uma semana e
+replanejamento semanal, está explicado na [história da otimização](storytelling-otimizacao-minerva.md#uso-operacional-planejar-duas-semanas-e-executar-uma).
 
 **Tabela R2.1.** Calendário da avaliação; fonte: `calendario_validacao_cruzada.csv`.
 
@@ -218,15 +220,15 @@ operacional, não um teste estatístico de equivalência. `T1` é somente sensib
 
 {candidate_table}
 
-![Figura R2.2: comparação dos candidatos](../assets/figures/preditivo_diario/comparacao_candidatos.png)
-
-**Figura R2.2.** WMAPE diário médio e por fold; barras de erro representam desvio-padrão entre
-origens, sem interpretação de intervalo de confiança. Fonte: notebook `2.0.1`.
-
 `E1` tem WMAPE ligeiramente menor que `P3`; ambos pertencem à zona prática. `P3` é escolhido
 pela interpretação direta da elasticidade, com o mesmo número de parâmetros. A diferença não
 estabelece superioridade estatística. Separar a segunda-feira em `P4` não melhora a métrica
 principal nesses folds; isso não demonstra igualdade entre os dias.
+
+![Figura R2.2: comparação dos candidatos por fold](../assets/figures/preditivo_diario/comparacao_candidatos.png)
+
+**Figura R2.2.** WMAPE diário médio e por fold. As barras de erro mostram desvio-padrão entre
+origens, sem interpretação de intervalo de confiança. Fonte: notebook `2.0.1`.
 
 Como referência adicional, a média histórica do mesmo dia da semana, sem preço, tem WMAPE diário
 médio de **{number(baseline)}%**, contra **{number(chosen["WMAPE diário (%)"])}%** de `P3`. O benchmark é
@@ -267,10 +269,10 @@ Há evidência de heterocedasticidade no teste Breusch-Pagan com variante studen
 curta não detectam evidência forte nos lags examinados; isso não garante independência temporal.
 A retirada de uma observação por vez preserva o sinal negativo, mas altera a magnitude da elasticidade.
 
-![Figura R2.3: diagnósticos](../assets/figures/preditivo_diario/diagnosticos.png)
+![Figura R2.3: diagnósticos do ajuste](../assets/figures/preditivo_diario/diagnosticos.png)
 
-**Figura R2.3.** Resíduos, QQ-plot e influência nas 76 observações de ajuste. Os limiares de Cook
-sinalizam investigação e não determinam exclusão automática. Fonte: notebook `2.0.1`.
+**Figura R2.3.** Resíduos, QQ-plot e influência nas 76 observações. Os limiares de Cook sinalizam
+investigação e não determinam exclusão automática. Fonte: notebook `2.0.1`.
 
 **Tabela R2.5.** Faixas observadas usadas como limites de aplicação; fonte: artefato preditivo.
 
@@ -278,7 +280,8 @@ sinalizam investigação e não determinam exclusão automática. Fonte: noteboo
 
 ![Figura R2.4: curvas e dados](../assets/figures/preditivo_diario/curvas_suporte.png)
 
-**Figura R2.4.** Preço em R$/kg e volume em kg/dia nos dois contextos admitidos. Fonte: notebook `2.0.1`.
+**Figura R2.4.** No mesmo preço, a sexta tem menor volume previsto que segunda a quinta.
+Os pontos mostram a dispersão que a curva não explica. Fonte: notebook `2.0.1`.
 
 Permanecer entre os preços mínimo e máximo observados reduz extrapolação, mas não garante
 precisão, suporte denso no interior da faixa ou identificação causal. O preço pode responder à
@@ -304,7 +307,8 @@ condicional a esse catálogo, sem validação aninhada de todo o processo explor
 
 ![Figura R2.5: holdout](../assets/figures/preditivo_diario/holdout.png)
 
-**Figura R2.5.** Observado e previsto nos preços efetivamente praticados. Fonte: notebook `2.0.1`.
+**Figura R2.5.** O previsto acompanha parte da variação diária, mas subestima os totais das duas
+semanas. A comparação usa os preços efetivamente praticados. Fonte: notebook `2.0.1`.
 
 As duas semanas são subestimadas. O WMAPE semanal coincide com o módulo do viés agregado porque
 os erros dos dois totais têm o mesmo sinal; erros diários ainda podem se compensar dentro de
@@ -342,7 +346,10 @@ Os notebooks numeram suas figuras e tabelas; este relatório usa a sequência pr
             [
                 r["premissa"],
                 next(
-                    a["status"]
+                    {
+                        "infeasible": "Inviável provado",
+                        "optimal": "Ótimo certificado",
+                    }.get(a["status"], a["status"])
                     for a in sensitivity
                     if a["premissa"] == r["premissa"] and a["ligacao_inicial_ativa"] == "True"
                 ),
@@ -395,24 +402,70 @@ Os notebooks numeram suas figuras e tabelas; este relatório usa a sequência pr
             for w, r in diagnostic["weeks"].items()
         ],
     )
-    results = f"""# Resultados operacionais e limites de interpretação
+    results = f"""# Da curva de demanda ao plano de preços: a história da otimização
 
 <!-- Gerado por scripts/update_project_report.py. -->
 
-## 1. O caso original é inviável
+Esta etapa transforma a [curva de demanda](curva-de-demanda-modelo-2-0.md) em decisões de preço.
+A narrativa acompanha os notebooks `3.0-minerva-otimizacao-precos.ipynb` e
+`3.1-minerva-simulacao-relaxacoes.ipynb`: primeiro entende o problema, depois verifica sua
+viabilidade e, por fim, compara mudanças nas regras e nas premissas.
+
+O resultado principal é que **não existe plano factível com todas as regras originais**.
+O estudo identifica quais exceções recuperam a viabilidade e qual margem cada configuração
+permite prever. A escolha de aceitar uma exceção permanece uma decisão operacional.
+
+## Uso operacional: planejar duas semanas e executar uma
+
+Conforme o alinhamento informado pelo grupo com a Minerva, cada rodada otimiza duas semanas,
+mas somente a primeira é liberada para execução. A segunda é a **cauda**: participa da decisão
+atual e será recalculada antes de se tornar executável na rodada seguinte.
+
+![Figura R3.1: planejamento e replanejamento semanal com novas entradas](../assets/figures/horizonte_rolante.png)
+
+**Figura R3.1.** A cada semana, o realizado e as entradas atualizadas alimentam uma nova instância.
+O último preço praticado conecta as rodadas; o plano anterior da cauda não é executado
+automaticamente. Fonte: elaboração própria com apoio de IA; esquema conceitual, sem resultados simulados.
+
+O modelo matemático pode ser reutilizado, atualizando calendário, preço inicial, custos, metas
+e outras informações disponíveis. Reestimar a curva de demanda é uma decisão adicional.
+Os notebooks atuais demonstram uma rodada de duas semanas; não executam automaticamente
+a sequência de replanejamentos da figura.
+
+## 1. A curva prevê o volume; o otimizador escolhe o preço
+
+O modelo preditivo recebe preço e contexto de calendário e devolve volume previsto. O otimizador
+usa essa relação para escolher conjuntamente os dez preços: mudar o preço de um dia pode exigir
+ajustes nos seguintes por causa do limite de variação, e os volumes precisam atender a cada semana.
+
+O objetivo é a **margem de contribuição prevista em reais**: receita após imposto menos o custo
+dos quilos previstos. Não é maximizar volume ou receita isoladamente. Um preço maior aumenta a
+margem por kg, mas reduz o volume previsto; o plano procura o melhor compromisso permitido pelas regras.
+O volume é calculado pela curva, sem liberdade para inventar uma quantidade que facilite cumprir a meta.
+
+Nesta instância, o preço anterior é R$ {number(planning["initial_price"])}/kg e o custo unitário é
+R$ {number(planning["unit_cost"][0])}/kg, ambos reconstruídos a partir de 31/10/2025. O imposto
+de {number(100 * planning["tax_rate"], 0)}% é uma premissa explícita. Nenhuma informação realizada
+das duas semanas futuras define essas entradas.
+
+## 2. Antes de maximizar a margem, é preciso existir um plano
 
 Com o preço anterior observado e mudanças de até R$ 2/kg, não é possível alcançar o piso de
 115,5 kg em nenhuma das duas semanas. Não há plano recomendado sob todas as regras originais.
 A planilha e a Figura 5 do enunciado especificam tolerância de 30%, embora o texto do enunciado
 mencione 5%. A referência usa 30%, com sensibilidade separada para 5%.
 Veja a [fonte do problema](../referencias/Minerva_Unifesp_ITA.pdf) e a
-[formulação atual](modelo-matematico-otimizacao-precos.md).
+[formulação atual](../planejamento/modelo-matematico-otimizacao-precos.md).
 
 **Tabela R3.1.** Envelope com regras originais; fonte: `minerva_diagnostico_infactividade.json`.
 
 {diagnostic_table}
 
-## 2. Recuperações isoladas e escolhas operacionais
+O preço anterior elevado e as quedas limitadas a R$ 2/kg impedem aumentar o volume previsto
+o suficiente. Isso explica o conflito: uma nova busca de preços sob as mesmas regras não elimina
+a incompatibilidade. Inviabilidade provada é diferente de terminar a busca sem encontrar solução.
+
+## 3. Qual regra precisa mudar para recuperar a viabilidade?
 
 O estudo mantém a curva central, custo unitário de R$ {number(planning["unit_cost"][0])}/kg,
 imposto hipotético de {number(100 * planning["tax_rate"], 0)}% e preço anterior de R$ {number(planning["initial_price"])}/kg.
@@ -430,28 +483,36 @@ meta, enquanto aumentar somente o teto não corrige o volume mínimo inalcançá
 A bisseção conserva limite inviável provado e limite com plano verificado; os valores arredondados
 na tabela não substituem a precisão dos arquivos e a verificação das restrições.
 
-![Figura R3.1: curvas de flexibilização](../assets/figures/relaxacoes/curvas.png)
+![Figura R3.2: curvas de flexibilização](../assets/figures/relaxacoes/curvas.png)
 
-**Figura R3.1.** Alterações isoladas, com preço anterior e demais regras mantidos; unidades em cada
-eixo. Margens ausentes representam casos sem plano factível. Fonte: notebook `3.1`.
+**Figura R3.2.** Cada painel altera uma regra e mantém as demais. As curvas distinguem recuperar
+viabilidade de obter margem adicional; casos sem plano não recebem margem. Fonte: notebook `3.1`.
 
-## 3. Alternativas parciais
+## 4. Recuperar a viabilidade e escolher uma alternativa são decisões diferentes
+
+Uma alteração mínima permite um plano, mas folgas adicionais ou mudanças combinadas podem
+aumentar sua margem prevista. Por isso, o segundo notebook cruza alterações de primeira mudança,
+variação interna, piso e teto, mantendo cada condição identificada.
 
 **Tabela R3.3.** Destaques da grade eficiente; fonte: `alternativas.csv`. A referência financeira
 é a recuperação mínima isolada admissível de maior margem, não o caso original inviável.
 
 {alt_table}
 
-![Figura R3.2: alternativas de margem](../assets/figures/relaxacoes/alternativas_margem.png)
+![Figura R3.3: comparação financeira das alternativas](../assets/figures/relaxacoes/alternativas_margem.png)
 
-**Figura R3.2.** Margens previstas de configurações com regras diferentes. Os comprimentos das
-linhas começam na referência factível. As referências livres são teóricas. Fonte: notebook `3.1`.
+**Figura R3.3.** As diferenças de margem partem da referência factível e não representam ganhos
+realizados. As configurações mantêm as condições identificadas na tabela. Fonte: notebook `3.1`.
 
 As fronteiras são aproximadas pelas grades. A maior margem da grade não é a melhor combinação
 contínua certificada. Os mínimos isolados, as configurações de regras e as premissas econômicas
 não devem ser misturados sem identificar exatamente o problema resolvido.
 
-## 4. Sensibilidade de demanda, elasticidade, custo e imposto
+## 5. O que acontece se as premissas forem diferentes?
+
+As comparações anteriores mantêm a mesma curva e os mesmos parâmetros econômicos. Uma pergunta
+complementar é quanto os resultados dependem dessas premissas. Ela exige identificar a instância
+alterada e distinguir recalcular o plano de aplicar as decisões centrais sem adaptação.
 
 A análise adicional do notebook `3.0` muda uma premissa por vez: demanda 80%/120%, custo 95%/105%,
 imposto 0%/14% e elasticidades nos limites HC3 do desenvolvimento. Ao mudar a elasticidade, o
@@ -465,16 +526,21 @@ removida; não se trata de um plano admissível sob a ligação original.
 
 {stress_table}
 
-![Figura R3.3: sensibilidade das premissas](../assets/figures/03_sensibilidade_premissas.png)
+![Figura R3.4: sensibilidade das premissas](../assets/figures/03_sensibilidade_premissas.png)
 
-**Figura R3.3.** Margem reotimizada e do plano central fixo; volume da primeira semana do plano
+**Figura R3.4.** Margem reotimizada e do plano central fixo; volume da primeira semana do plano
 fixo comparado com os limites originais. Fonte: notebook `3.0`.
 
 Reotimizar pressupõe conhecer a premissa antes de decidir. A avaliação do plano fixo expõe risco
 sem essa adaptação. Uma margem calculada para o plano fixo não significa que suas metas estejam
 atendidas, e nenhuma dessas diferenças representa ganho financeiro realizado.
 
-## 5. Limites e próximos dados necessários
+## 6. O que esta etapa permite concluir?
+
+A entrega permite diagnosticar o conflito das regras, quantificar exceções e comparar alternativas
+verificadas. Cada solução é acompanhada de status, limitante e gap, com volume e margem recalculados
+fora do solver. Um certificado de ótimo é relativo às entradas, regras e tolerâncias daquela instância;
+não garante que o realizado seguirá a previsão.
 
 O modelo principal é determinístico e usa uma relação observacional. O atendimento previsto das
 metas não é garantia probabilística. A alíquota de 7% é hipótese, porque a coluna de imposto não
@@ -489,12 +555,35 @@ novas observações. A ordem de salvamento e os hashes verificam integridade na 
 não demonstram que todas as versões anteriores mantiveram o período de novembro intocado.
 
 [Referências metodológicas](../referencias-bibliograficas.md).
+
+Para reprodução e detalhes, consulte o [fluxo de execução](../planejamento/plano-acao-tres-notebooks.md),
+a [otimização de referência](../planejamento/plano-otimizador-margem.md) e o
+[estudo de flexibilizações](../planejamento/plano-simulacao-relaxacoes.md).
+As figuras e tabelas deste documento usam a sequência própria `R3`.
+"""
+    results_pointer = """# Resultados operacionais: localização do storytelling
+
+<!-- Gerado por scripts/update_project_report.py. -->
+
+O relato completo da decisão de preços está em
+[Da curva de demanda ao plano de preços: a história da otimização](../storytelling/storytelling-otimizacao-minerva.md).
+O documento reúne funcionamento, inviabilidade, flexibilizações, alternativas, sensibilidades e
+limites de interpretação, com figuras explicativas e resultados atualizados dos notebooks.
+
+Este caminho permanece disponível para preservar referências anteriores.
+
+## Uso operacional: planejar duas semanas e executar uma
+
+O [esquema de horizonte rolante](../storytelling/storytelling-otimizacao-minerva.md#uso-operacional-planejar-duas-semanas-e-executar-uma)
+explica o combinado: otimizar duas semanas, executar a primeira e replanejar semanalmente.
+A segunda semana é cauda e é recalculada com a instância atualizada antes de se tornar executável.
 """
     story = story.replace("../assets/", "../../reports/")
     results = results.replace("../assets/", "../../reports/")
     return {
         "docs/storytelling/curva-de-demanda-modelo-2-0.md": story,
-        "docs/planejamento/resultados-operacionais.md": results,
+        "docs/storytelling/storytelling-otimizacao-minerva.md": results,
+        "docs/planejamento/resultados-operacionais.md": results_pointer,
     }
 
 

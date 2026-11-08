@@ -122,6 +122,11 @@ Ao mesmo tempo, as cinco observações de sábado e as cinco de domingo são ins
 elasticidades próprias com estabilidade. Uma especificação inicial defensável deve usar poucos
 parâmetros e compartilhar a inclinação do preço entre os contextos.
 
+![Figura R1.1: cobertura e faixa de preços por dia da semana](../../reports/figures/01_suporte_dia_semana.png)
+
+**Figura R1.1.** As faixas de preço se sobrepõem, mas sábado e domingo têm somente cinco
+observações cada. Essa cobertura limita o detalhamento do modelo. Fonte: notebook `1.0`.
+
 ## 8. A sazonalidade marginal pode ser confundida com preço
 
 Os recortes de mês, quinzena e semana do mês exibem diferenças visuais de volume. Entretanto, essas
@@ -174,6 +179,12 @@ como evidência de uma resposta econômica diferente.
 
 A hipótese mais defensável para iniciar a modelagem é, portanto, uma elasticidade compartilhada com
 interceptos ou níveis diferentes por contexto de calendário.
+
+![Figura R1.2: associação observada entre preço e volume](../../reports/figures/01_preco_volume.png)
+
+**Figura R1.2.** As cores distinguem os dias da semana. A dispersão evidencia níveis diferentes
+e uma associação predominantemente negativa nos dias úteis, sem demonstrar causalidade.
+Fonte: notebook `1.0`.
 
 ## 11. Os extremos formam um episódio que merece diagnóstico
 
@@ -243,6 +254,7 @@ Ele não permite concluir que:
 - Documento do Desafio Minerva-Unifesp-ITA: `docs/referencias/Minerva_Unifesp_ITA.pdf`.
 - PHILLIPS, Robert L. *Pricing and Revenue Optimization*. 2. ed.
 - [Referências metodológicas completas](../referencias-bibliograficas.md).
+- [Storytelling da otimização e esquema de horizonte rolante](storytelling-otimizacao-minerva.md#uso-operacional-planejar-duas-semanas-e-executar-uma).
 
 ## Resumo Alto Nível
 - A base é utilizável: não há dados ausentes, duplicados ou valores inválidos nas 76 observações de desenvolvimento.

@@ -4,7 +4,7 @@ Projeto de modelagem matemática para prever demanda e escolher preços diários
 em um horizonte de duas semanas, maximizando a margem de contribuição prevista sob restrições
 comerciais. As etapas se comunicam por arquivos persistidos, com verificação de integridade.
 
-**Conclusão principal:** o caso com todas as regras originais é inviável sob a previsão central. As recuperações mínimas e as sensibilidades estão no [resumo operacional](docs/planejamento/resultados-operacionais.md).
+**Conclusão principal:** o caso com todas as regras originais é inviável sob a previsão central. As recuperações mínimas, as sensibilidades e o uso em horizonte rolante estão no [storytelling da otimização](docs/storytelling/storytelling-otimizacao-minerva.md).
 
 ## Fluxo de execução
 

@@ -24,9 +24,9 @@ nav:
   - Primeiros passos: planejamento/getting-started.md
   - Etapas e contratos: planejamento/plano-acao-tres-notebooks.md
   - Modelo matemático: planejamento/modelo-matematico-otimizacao-precos.md
-  - Resultados operacionais: planejamento/resultados-operacionais.md
   - Otimização de referência: planejamento/plano-otimizador-margem.md
   - Flexibilizações: planejamento/plano-simulacao-relaxacoes.md
   - Exploração dos dados: storytelling/storytelling-eda-minerva.md
   - Storytelling da curva de demanda: storytelling/curva-de-demanda-modelo-2-0.md
+  - Storytelling da otimização: storytelling/storytelling-otimizacao-minerva.md
   - Referências: referencias-bibliograficas.md

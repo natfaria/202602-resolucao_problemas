@@ -183,7 +183,10 @@ Gurobi com limitantes globais e tolerância numérica explícita.
 
 ## 8. Premissas e limites de interpretação
 
-1. Os dez preços são definidos antes de observar as vendas do horizonte, sem replanejamento.
+1. Em cada rodada, os dez preços são planejados conjuntamente antes de observar as vendas futuras.
+   No uso operacional combinado, executa-se a primeira semana e replaneja-se semanalmente;
+   a segunda é cauda, recalculada com a instância atualizada. Os notebooks demonstram uma rodada
+   isolada, sem automatizar o ciclo semanal. Veja o [esquema de uso](resultados-operacionais.md#uso-operacional-planejar-duas-semanas-e-executar-uma).
 2. A curva de demanda está congelada e descreve uma associação observacional; não é uma garantia
    de resposta causal à mudança de preço.
 3. O volume previsto pode ser integralmente atendido. Estoque, capacidade, validade e ruptura são
