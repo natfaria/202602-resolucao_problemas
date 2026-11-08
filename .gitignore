@@ -86,6 +86,8 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+/notebooks/antigos/
+/notebooks/comparativos/
 
 # IPython
 profile_default/
