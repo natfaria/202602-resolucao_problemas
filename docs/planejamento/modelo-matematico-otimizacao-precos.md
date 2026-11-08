@@ -13,12 +13,12 @@ volume isoladamente. As restrições de estabilidade e volume conectam as decis�
 
 ## 2. Entradas congeladas
 
-A curva é carregada de `models/preditivo/curva_demanda.json`. Seu núcleo é verificado por
+A curva é carregada de `models/preditivo_diario/curva_demanda.json`. Seu núcleo é verificado por
 `model_core_sha256`; a base de desenvolvimento é conferida pelo `training.data_sha256` registrado
 no mesmo artefato. A otimização não reestima coeficientes nem modifica o suporte estatístico.
 Os identificadores congelados são:
 
-- núcleo preditivo: `59884fba38c28618142678475c8093ea9b65f9511c75e7161665dc1278f84964`;
+- núcleo preditivo: `d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385`;
 - base de treino: `ed5fb2cba0b14c38317d2e2a44d830843c95b0bb5911f6ec30da7997520e9b1c`.
 
 | Entrada | Definição no horizonte |
@@ -44,8 +44,8 @@ c=\frac{\text{custo realizado em 31/10}}{\text{volume realizado em 31/10}}
 $$
 
 O custo total desse dia não deve ser interpretado como custo por kg. O preço anterior é calculado
-pela razão entre receita e volume da mesma data. Nenhum custo, preço ou volume realizado em
-novembro é usado para definir esses parâmetros. A instância não contém uma coluna de imposto;
+pela razão entre receita e volume da mesma data. Nenhum custo, preço ou volume realizado
+no horizonte é usado para definir esses parâmetros. A instância não contém uma coluna de imposto;
 portanto, a alíquota de 7% é uma premissa econômica, não uma medida reconstruída da fonte.
 
 ## 3. Conjuntos, parâmetros e variáveis
@@ -73,9 +73,12 @@ D_t(p)=SF\exp(\beta_0+\gamma_{c(t)})p^\beta,
 $$
 
 com $\beta=-12{,}364695401293016$, $\beta_0=91{,}59146121459447$ e
-$SF=1{,}1225968758916314$. O efeito de contexto é zero de segunda a quinta e
+$SF=1{,}0912057454522903$. O efeito de contexto é zero de segunda a quinta e
 $-1{,}3394398892280646$ na sexta. O fator $SF$ corrige a retransformação da escala logarítmica
-para o nível de volume e participa das metas e da margem.
+para o nível de volume e participa das metas e da margem. Ele é a média dos resíduos exponenciados
+nos 66 dias úteis do treino; os coeficientes usam todas as 76 observações de desenvolvimento.
+A curva foi selecionada por WMAPE diário na validação cruzada temporal e admite previsões
+somente de segunda a sexta.
 
 Os coeficientes, o fator de correção e os limites de preço são lidos com a precisão do artefato.
 Os limites aproximados são:
@@ -93,7 +96,7 @@ D_t(p)=d_t^{ref}\left(\frac{p}{p^{ref}}\right)^\beta,
 \qquad d_t^{ref}=D_t(1300).
 $$
 
-O volume de referência é aproximadamente 21,1314343 kg de segunda a quinta e 5,5362746 kg na sexta.
+O volume de referência é aproximadamente 20,5405369 kg de segunda a quinta e 5,3814640 kg na sexta.
 A normalização não altera as previsões.
 
 ## 5. Formulação com todas as regras ativas

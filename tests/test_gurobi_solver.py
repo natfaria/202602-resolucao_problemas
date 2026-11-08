@@ -9,20 +9,20 @@ import pytest
 
 pytest.importorskip("gurobipy")
 
-from src.modeling.demand_curve import load_artifact, predict_volume_from_artifact
+from src.modeling.demand_curve import file_sha256, load_artifact, predict_volume_from_artifact
 from src.optimization.gurobi_solver import Scenario, solve_scenario
 from src.optimization.price_schedule import problem_from_frames
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-@pytest.fixture(scope="module")
-def problem():
+@pytest.fixture(scope="module", params=["preditivo", "preditivo_diario"])
+def problem(request):
     training = pd.read_csv(
         ROOT / "data/processed/minerva_modelagem_treino.csv", parse_dates=["data"]
     ).sort_values("data")
     return problem_from_frames(
-        load_artifact(ROOT / "models/preditivo/curva_demanda.json"),
+        load_artifact(ROOT / "models" / request.param / "curva_demanda.json"),
         pd.read_csv(ROOT / "data/interim/minerva_restricoes.csv"),
         unit_cost=float(training.iloc[-1]["custo_kg"]),
         initial_price=float(training.iloc[-1]["preco_kg"]),
@@ -113,3 +113,42 @@ def test_incompatible_elasticity_is_rejected(problem):
     artifact.pop("model_core_sha256")
     with pytest.raises(ValueError, match="elasticidade"):
         solve_scenario(replace(problem, artifact=artifact), Scenario("Elasticidade incompatível"))
+
+
+def test_exported_plans_use_daily_predictive_curve():
+    artifact_path = ROOT / "models/preditivo_diario/curva_demanda.json"
+    artifact = load_artifact(artifact_path)
+    exported = load_artifact(ROOT / "data/processed/minerva_otimizacao_resultado.json")
+    training = pd.read_csv(
+        ROOT / artifact["training"]["data_file"], parse_dates=["data"]
+    ).sort_values("data")
+    last_day = training.iloc[-1]
+
+    assert exported["model_file"] == str(artifact_path.relative_to(ROOT))
+    assert exported["model_core_sha256"] == artifact["model_core_sha256"]
+    assert exported["model_file_sha256"] == file_sha256(artifact_path)
+    assert exported["smearing_factor"] == artifact["smearing_factor"]
+    assert exported["decision_cutoff"] == str(last_day["data"].date())
+    assert exported["unit_cost_kg"] == pytest.approx(last_day["custo_kg"])
+    assert exported["initial_price_observed"] == pytest.approx(last_day["preco_kg"])
+    assert len(exported["scenarios"]) == 16
+    assert len(exported["initial_price_sensitivity"]) == 32
+
+    for result in exported["scenarios"].values():
+        assert result["model_core_sha256"] == artifact["model_core_sha256"]
+        if result["daily"] is None:
+            continue
+        assert result["validation"]["satisfied"]
+        daily = pd.DataFrame(result["daily"])
+        expected_volume = np.array(
+            [
+                predict_volume_from_artifact(artifact, price, day, allow_extrapolation=True)
+                for price, day in zip(daily["preco_kg"], daily["dia_semana"], strict=True)
+            ]
+        )
+        expected_margin = (
+            (1 - exported["tax_rate_assumed"]) * daily["preco_kg"] - exported["unit_cost_kg"]
+        ) * expected_volume
+        assert len(daily) == 10
+        assert daily["volume_previsto_kg"].to_numpy() == pytest.approx(expected_volume)
+        assert result["total_margin_rs"] == pytest.approx(expected_margin.sum())

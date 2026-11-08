@@ -1,5 +1,6 @@
 {
-  "model_core_sha256": "59884fba38c28618142678475c8093ea9b65f9511c75e7161665dc1278f84964",
+  "model_file": "models/preditivo_diario/curva_demanda.json",
+  "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
   "cost_method": "custo_unitario_ultimo_dia_treino",
   "unit_cost_kg": 1010.4468382320078,
   "status": "infeasible",
@@ -11,10 +12,10 @@
         "target_kg": 165.0,
         "lower_kg": 115.49999999999999,
         "upper_kg": 214.5,
-        "minimum_reachable_kg": 71.69909329647837,
-        "maximum_reachable_kg": 79.20152751098361,
-        "shortage_kg": 36.298472489016376,
-        "shortage_pct_lower": 0.3142724890823929,
+        "minimum_reachable_kg": 69.69417448867874,
+        "maximum_reachable_kg": 76.98681844267479,
+        "shortage_kg": 38.5131815573252,
+        "shortage_pct_lower": 0.33344745937078096,
         "excess_kg": 0.0,
         "potentially_feasible": false
       },
@@ -22,10 +23,10 @@
         "target_kg": 165.0,
         "lower_kg": 115.49999999999999,
         "upper_kg": 214.5,
-        "minimum_reachable_kg": 65.33001977617725,
-        "maximum_reachable_kg": 87.05043480058553,
-        "shortage_kg": 28.44956519941445,
-        "shortage_pct_lower": 0.24631658181311217,
+        "minimum_reachable_kg": 63.50319911023707,
+        "maximum_reachable_kg": 84.6162470593662,
+        "shortage_kg": 30.883752940633784,
+        "shortage_pct_lower": 0.2673918003518077,
         "excess_kg": 0.0,
         "potentially_feasible": false
       }
