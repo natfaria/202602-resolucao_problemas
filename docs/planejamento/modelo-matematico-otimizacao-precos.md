@@ -15,7 +15,7 @@ volume isoladamente. As restrições de estabilidade e volume conectam as decis�
 
 A curva é carregada de `models/preditivo_diario/curva_demanda.json`. Seu núcleo é verificado por
 `model_core_sha256`; a base de desenvolvimento é conferida pelo `training.data_sha256` registrado
-no mesmo artefato. A otimização não reestima coeficientes nem modifica o suporte estatístico.
+no mesmo artefato. A otimização não reestima coeficientes nem modifica o faixa de preços observada no treino.
 Os identificadores congelados são:
 
 - núcleo preditivo: `d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385`;
@@ -33,7 +33,7 @@ Os identificadores congelados são:
 | Tolerância principal | 30% abaixo e acima da meta: 115,5 a 214,5 kg |
 | Sensibilidade de tolerância | 5%: 156,75 a 173,25 kg |
 | Variação interna | Até R$ 2/kg entre decisões consecutivas, quando ativa |
-| Ligação inicial | Até R$ 2/kg entre o preço anterior e a primeira decisão, quando ativa |
+| Limite da primeira mudança | Até R$ 2/kg entre o preço anterior e a primeira decisão, quando ativa |
 
 O custo usado em todos os dias planejados é **o custo unitário do último dia de treino**:
 
@@ -57,7 +57,7 @@ portanto, a alíquota de 7% é uma premissa econômica, não uma medida reconstr
 - $c$ é o custo unitário constante; $\tau=0{,}07$ é a alíquota sobre receita.
 - $L_w$ e $U_w$ são os limites semanais obtidos da meta e tolerância.
 - $\Delta=2$ limita as mudanças internas; $\Delta_0=2$ limita a primeira mudança.
-- $[\underline p_{c(t)},\overline p_{c(t)}]$ é o suporte observado do contexto.
+- $[\underline p_{c(t)},\overline p_{c(t)}]$ é o faixa de preços observada no treino do contexto.
 - $p_t>0$ é o preço contínuo escolhido para o dia $t$.
 - $q_t$ é o volume derivado da curva; $g_t$ é a margem de contribuição prevista.
 
@@ -140,18 +140,18 @@ Cada cenário ativa ou remove quatro grupos de regras independentemente:
 |---|---|---|
 | Variação interna | $\lvert p_t-p_{t-1}\rvert\le2$, $t\ge2$ | Sem limite entre decisões internas |
 | Metas semanais | $L_w\le\sum q_t\le U_w$ | Sem mínimo e sem máximo semanal |
-| Ligação inicial | $\lvert p_1-p^0\rvert\le2$ | Primeiro preço sem ligação ao histórico |
+| Limite da primeira mudança | $\lvert p_1-p^0\rvert\le2$ | Primeiro preço sem ligação ao histórico |
 | Suporte de preço | Faixa observada do contexto | Domínio técnico de R$ 800 a R$ 2.000/kg |
 
-O produto das quatro escolhas gera **16 cenários**. A demanda e a função objetivo permanecem
-iguais em todos eles. Remover a variação interna não remove automaticamente a ligação inicial.
+A comparação principal reúne **15 cenários**: o caso original, as retiradas individuais dos grupos de primeira mudança, mudanças internas e faixa de preços, e as combinações de dois ou mais grupos. A retirada conjunta de mínimo e máximo semanal aparece apenas nas combinações com outras mudanças. A tabela de retiradas isoladas examina separadamente o mínimo e o máximo semanal. O preço histórico permanece como referência em todos esses casos. A demanda e a função objetivo permanecem
+iguais em todos eles. Remover a variação interna não remove automaticamente a limite da primeira mudança.
 As metas e o suporte original continuam sendo reportados como referências mesmo quando suas
 restrições são removidas.
 
 A sensibilidade do preço anterior usa $p^0\in\{1200,1250,1300,1318{,}919594425694\}$, mantendo a
-ligação inicial ativa e combinando as duas alternativas de variação interna, metas e suporte:
+limite da primeira mudança ativa e combinando as duas alternativas de variação interna, metas e suporte:
 $4\times2^3=32$ cenários. Os valores hipotéticos não substituem o dado histórico do problema-base.
-Sem ligação inicial, o resultado não deve depender de $p^0$.
+Sem limite da primeira mudança, o resultado não deve depender de $p^0$.
 
 Na extrapolação, os limites de R$ 800 a R$ 2.000 são um domínio computacional positivo e finito;
 não constituem uma região validada estatisticamente. O suporte no artefato permanece intacto.
@@ -181,6 +181,16 @@ retornam a reais nas saídas. A receita é côncava em volume, mas o conjunto co
 restrições de preço não é declarado convexo. As expressões não lineares são resolvidas pelo
 Gurobi com limitantes globais e tolerância numérica explícita.
 
+### Limites numéricos deduzidos do máximo semanal
+
+Quando o máximo da semana está em vigor, $q_t\le U_w$ para todo dia dessa semana, pois os volumes são positivos e sua soma não pode superar $U_w$. Como a curva é decrescente, isso também implica:
+
+$$
+p_t\ge 1300\left(\frac{U_w}{d_t^{ref}}\right)^{1/\beta}.
+$$
+
+O código combina esses limites com os limites de preço e volume já conhecidos. São consequências das regras existentes e ajudam a busca sem excluir planos válidos. Se o máximo semanal for retirado, esses limites derivados deixam de ser aplicados. O mínimo semanal não implica um mínimo diário igual para todos os dias.
+
 ## 8. Premissas e limites de interpretação
 
 1. Em cada rodada, os dez preços são planejados conjuntamente antes de observar as vendas futuras.
@@ -202,8 +212,7 @@ Gurobi com limitantes globais e tolerância numérica explícita.
 ## 9. Saídas e verificação independente
 
 Cada cenário registra regras ativas, condição inicial, hash da curva, status, tempo de execução,
-melhor objetivo encontrado, limitante global e gap. Uma solução com limite de tempo não é
-automaticamente classificada como ótima. Ausência de solução encontrada também não equivale a
+melhor objetivo encontrado, limitante global e gap. Um plano encontrado com tempo esgotado pode atender às regras sem ser a melhor solução. A apresentação distingue plano válido, melhor solução confirmada dentro da tolerância, impossibilidade comprovada e busca encerrada sem encontrar plano. Ausência de solução encontrada também não equivale a
 um certificado de inviabilidade.
 
 Preços, demanda e margem são recalculados fora do solver. A verificação confere domínio técnico,
@@ -212,7 +221,7 @@ nessa verificação podem ser apresentados. Casos inviáveis não recebem uma ag
 
 ## 10. Comparação gráfica com os dias de teste
 
-A política exibida é definida antes da leitura do teste: **sem ligação inicial, mantendo variação
+A plano exibida é definida antes da leitura do teste: **sem limite da primeira mudança, mantendo variação
 interna, metas e suporte**. Sua interpretação é condicionada à retirada da ligação com o histórico;
 ela não substitui a conclusão do cenário com todas as regras ativas.
 
@@ -252,3 +261,34 @@ O notebook `3.0` reavalia demanda (80%/120%), custo unitário (95%/105%), impost
 A tabela distingue regras originais e primeira ligação removida. Além da reotimização, avalia o plano central fixo sob as novas premissas, registrando margem e atendimento das metas. Essa avaliação pressupõe primeira ligação removida. O teste não define as premissas. Resultados estão em `reports/tables/03_sensibilidade_premissas.csv` e no [storytelling da otimização](../storytelling/storytelling-otimizacao-minerva.md).
 
 A estimação segue Phillips (2021, cap. 4); retransformação e covariância seguem Duan (1983) e MacKinnon e White (1985). A resolução global segue a documentação Gurobi 13.0. Consulte as [referências completas](../referencias-bibliograficas.md).
+
+
+## 14. Comparação financeira com o realizado
+
+Depois de salvar os planos, a comparação soma volume, receita bruta e margem por semana e no horizonte completo. A margem prevista é a mesma usada no objetivo. O resultado real é reconstruído como receita registrada menos imposto assumido de 7% e custo registrado no teste. Uma segunda referência mantém os preços e volumes reais e substitui o custo registrado pelo custo unitário fixo do planejamento multiplicado pelo volume real.
+
+As diferenças são previsão menos referência real, em reais e percentual. O percentual usa a referência agregada do período, sem média de percentuais semanais, e fica ausente quando a referência não é positiva. Cenários sem plano não recebem valores financeiros previstos. Uma diferença positiva não comprova ganho realizado, pois o teste não observa vendas nos preços sugeridos.
+
+A implementação está em `src/optimization/holdout_comparison.py`. O notebook de cenários publica `data/processed/minerva_referencia_real_teste.json`, com calendário, valores reais, premissas de custo e imposto e identificadores das entradas, teste e planos já salvos. O estudo gradual recebe esse arquivo somente após salvar suas alternativas, conferindo que corresponde às mesmas entradas e resultados do planejamento. Os arquivos de otimização permanecem inalterados durante a comparação com o teste.
+
+Os resultados estão em `reports/tables/03_comparacao_financeira_cenarios.csv`, `reports/tables/03_referencia_real_teste.csv` e `reports/tables/relaxacoes/comparacao_financeira_alternativas_teste.csv`. Os gráficos mostram margem e receita nas duas semanas e no total, com as referências reais identificadas.
+
+
+## 15. Leitura inicial: uma regra por vez
+
+Antes das combinações e das comparações com o realizado, o painel inicial responde: quanto é necessário flexibilizar cada regra para conseguir um plano? Cada ponto parte das mesmas entradas originais. Somente um limite é alterado: máximo semanal, mínimo semanal, primeira mudança ou mudanças internas. A retirada completa do mínimo mantém o máximo; a retirada completa do máximo mantém o mínimo. O preço histórico, a curva, o custo, o imposto e as metas nominais são preservados.
+
+Os intervalos de início de viabilidade são calculados por bisseção, com um valor comprovadamente inviável e outro com plano conferido. As curvas mostram a redução do mínimo e o aumento do máximo em kg, a primeira mudança em R$/kg e as mudanças internas em R$/kg. Em todos os painéis, avançar para a direita significa flexibilizar mais. A área inviável não recebe margem zero. O limite interno respeita R$ 15/kg, recebido do arquivo comercial. A primeira mudança é independente desse teto e tem faixa de estudo até R$ 120/kg.
+
+A extrapolação é examinada sozinha, mantendo as demais regras. A referência com todas as regras retiradas aparece em gráfico separado, com preço e margem livres calculados pela mesma curva e conferidos com o Gurobi. Essa referência não integra o estudo de uma regra por vez.
+
+Os resultados são publicados antes de ler o teste: `reports/tables/03_sensibilidade_uma_regra.csv`, `reports/tables/03_resumo_uma_regra.csv` e `data/processed/minerva_sensibilidade_isolada.json`. Os gráficos estão em `reports/figures/03_sensibilidade_uma_regra.png` e `reports/figures/03_otimo_livre.png`.
+
+
+## 16. Organização da leitura e preço anterior hipotético
+
+O fluxo principal do notebook de cenários apresenta o caso original, curvas graduais de uma regra por vez, o ótimo livre separado, a sensibilidade ao preço anterior e a comparação final com o teste. A figura dos dez dias, com curva, ponto otimizado e observação real, é preservada. Os gráficos de trajetórias misturadas e de combinações identificadas apenas por códigos não fazem parte desse fluxo.
+
+Na sensibilidade ao preço anterior, somente esse valor muda; o limite inicial de R$ 2/kg, o limite entre dias de R$ 2/kg, os volumes semanais e a faixa de preços observada permanecem. São testados preços de R$ 1.200 a R$ 1.320/kg em passos de R$ 5/kg e o preço histórico exato. O cinza indica valores amostrados sem solução, com fronteiras aproximadas pela grade. Essa análise não mede intensidade de flexibilização e não substitui o histórico nos demais testes. Seus arquivos são `reports/tables/03_sensibilidade_preco_anterior.csv` e `data/processed/minerva_sensibilidade_preco_anterior.json`.
+
+A comparação financeira visível usa pontos das curvas escolhidos antes de ler o teste, incluindo diferentes limites da primeira mudança e a referência livre separada. Ela é exportada para `reports/tables/03_comparacao_financeira_uma_regra.csv`. O arquivo geral das referências completas permanece disponível. O estudo combinado recebe as referências complementares e a análise de custo, imposto e demanda, preservando os arquivos e as entradas preditivas.

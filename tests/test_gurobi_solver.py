@@ -135,7 +135,10 @@ def test_exported_plans_use_daily_predictive_curve():
     assert exported["decision_cutoff"] == str(last_day["data"].date())
     assert exported["unit_cost_kg"] == pytest.approx(last_day["custo_kg"])
     assert exported["initial_price_observed"] == pytest.approx(last_day["preco_kg"])
-    assert len(exported["scenarios"]) == 16
+    assert len(exported["scenarios"]) == 15
+    assert "var0_meta1_init0_ext0" not in exported["scenarios"]
+    assert len(exported["isolated_scenarios"]) == 5
+    assert {"sem_minimo_semanal", "sem_maximo_semanal"} <= set(exported["isolated_scenarios"])
     assert len(exported["initial_price_sensitivity"]) == 32
 
     for result in exported["scenarios"].values():
@@ -156,3 +159,64 @@ def test_exported_plans_use_daily_predictive_curve():
         assert len(daily) == 10
         assert daily["volume_previsto_kg"].to_numpy() == pytest.approx(expected_volume)
         assert result["total_margin_rs"] == pytest.approx(expected_margin.sum())
+
+
+@pytest.mark.parametrize("remove_both", [False, True], ids=["sem_minimo", "sem_minimo_e_maximo"])
+def test_removing_weekly_minimum_allows_low_volume_plan(problem, remove_both):
+    scenario = Scenario(
+        "Sem mínimo semanal",
+        enforce_weekly_minimum=False,
+        enforce_weekly_targets=not remove_both,
+    )
+    result = solve_scenario(problem, scenario)
+    assert result["status"] == "optimal"
+    assert result["validation"]["satisfied"]
+    assert not result["validation"]["targets_ok"]
+    assert result["validation"]["required_targets_ok"]
+    assert (result["weekly"]["volume_previsto_kg"] < result["weekly"]["limite_inferior_kg"]).all()
+    assert not result["weekly"]["minimo_ativo"].any()
+    assert result["weekly"]["maximo_ativo"].eq(not remove_both).all()
+
+
+def test_removing_only_weekly_maximum_does_not_resolve_minimum_conflict(problem):
+    result = solve_scenario(problem, Scenario("Sem máximo semanal", enforce_weekly_maximum=False))
+    assert result["status"] == "infeasible"
+    assert result["daily"] is None
+
+
+def test_removing_maximum_releases_volume_above_original_cap(problem):
+    result = solve_scenario(
+        problem,
+        Scenario(
+            "Sem máximo e sem limite na primeira mudança",
+            enforce_initial_anchor=False,
+            enforce_weekly_maximum=False,
+        ),
+    )
+    assert result["status"] == "optimal"
+    assert result["validation"]["satisfied"]
+    assert (result["weekly"]["volume_previsto_kg"] > result["weekly"]["limite_superior_kg"]).all()
+    assert result["weekly"]["minimo_ativo"].all()
+    assert not result["weekly"]["maximo_ativo"].any()
+
+
+def test_extrapolated_weekly_cap_matches_closed_form_solution(problem):
+    result = solve_scenario(
+        problem,
+        Scenario(
+            "Somente limites semanais",
+            enforce_daily_variation=False,
+            enforce_initial_anchor=False,
+            extrapolate=True,
+        ),
+    )
+    assert result["status"] == "optimal"
+    assert result["validation"]["satisfied"]
+    beta = problem.artifact["coefficients"]["ln_preco"]
+    qref = sum(
+        predict_volume_from_artifact(problem.artifact, 1300, d) for d in problem.weekdays[:5]
+    )
+    cap = next(iter(problem.targets.values())) * (1 + problem.tol_upper)
+    expected_price = 1300 * (cap / qref) ** (1 / beta)
+    assert result["daily"]["preco_kg"].to_numpy() == pytest.approx(expected_price, abs=0.02)
+    assert result["weekly"]["volume_previsto_kg"].to_numpy() == pytest.approx(cap, abs=1e-4)

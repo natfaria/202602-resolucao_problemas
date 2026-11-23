@@ -1,7 +1,7 @@
 tolerancia,variacao_interna_ativa,ligacao_inicial_ativa,status,margem_prevista_rs,volume_semana_1_kg,volume_semana_2_kg
-0.05,True,True,Inviável provado,,,
-0.05,False,True,Ótimo certificado,45407.661558228516,173.24999996410818,173.24999997568312
-0.05,True,False,Ótimo certificado,46298.857123926544,173.2499999999989,173.2499999999989
-0.3,True,True,Inviável provado,,,
-0.3,False,True,Ótimo certificado,47171.20899716813,193.8186701409778,214.49999995668264
-0.3,True,False,Ótimo certificado,48917.583145057724,214.49999999999903,214.49999999999903
+0.05,True,True,Não existe solução com essas regras,,,
+0.05,False,True,Melhor solução confirmada (na tolerância),45407.661558228516,173.24999996410818,173.24999997568312
+0.05,True,False,Melhor solução confirmada (na tolerância),46298.857123926544,173.2499999999989,173.2499999999989
+0.3,True,True,Não existe solução com essas regras,,,
+0.3,False,True,Melhor solução confirmada (na tolerância),47171.20899716813,193.8186701409778,214.49999995668264
+0.3,True,False,Melhor solução confirmada (na tolerância),48917.583145057724,214.49999999999903,214.49999999999903

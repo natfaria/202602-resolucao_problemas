@@ -258,3 +258,163 @@ def test_saved_relaxations_use_the_published_curve_and_fixed_historical_inputs(p
         assert daily["volume_previsto_kg"].to_numpy() == pytest.approx(predicted)
         assert result["validation"]["satisfied"]
         assert not daily["extrapolado"].any()
+
+
+def test_saved_intro_curves_change_only_the_named_rule(problem):
+    payload = load_artifact(ROOT / "data/processed/minerva_sensibilidade_isolada.json")
+    inputs = load_artifact(ROOT / payload["planning_inputs_file"])
+    assert payload["planning_inputs_sha256"] == inputs["inputs_sha256"]
+    assert payload["model_core_sha256"] == problem.artifact["model_core_sha256"]
+    base = payload["base"]
+    columns = {
+        "daily_variation": "variacao_interna_rs",
+        "initial_transition": "transicao_inicial_rs",
+        "tolerance_lower": "minimo_semanal_kg",
+        "tolerance_upper": "maximo_semanal_kg",
+    }
+    assert {row["regra"] for row in payload["curves"]} == set(columns)
+    for row in payload["curves"]:
+        for rule, column in columns.items():
+            if rule != row["regra"]:
+                assert row[column] == pytest.approx(base[column])
+        assert row["primeira_mudanca_limitada"]
+        assert row["variacao_interna_limitada"]
+        assert not row["extrapolacao"]
+        assert row["preco_anterior_kg"] == problem.initial_price
+        assert row["model_core_sha256"] == payload["model_core_sha256"]
+        assert (
+            row["variacao_interna_rs"] <= payload["relaxation_limits"]["daily_variation_ceiling"]
+        )
+        if not row["minimo_semanal_ativo"]:
+            assert row["regra"] == "tolerance_lower" and row["minimo_semanal_kg"] == 0
+        if not row["maximo_semanal_ativo"]:
+            assert row["regra"] == "tolerance_upper" and row["maximo_semanal_kg"] is None
+        if row["status"] == "infeasible":
+            assert row["margem_prevista_rs"] is None and not row["plano_verificado"]
+        else:
+            assert row["status"] == "optimal" and row["plano_verificado"]
+            assert row["margem_prevista_rs"] is not None
+
+
+def test_saved_intro_curves_include_both_sides_of_feasibility(problem):
+    payload = load_artifact(ROOT / "data/processed/minerva_sensibilidade_isolada.json")
+    for rule in ["initial_transition", "tolerance_lower"]:
+        threshold = payload["thresholds"][rule]
+        assert threshold["status"] == "bracketed"
+        rows = [row for row in payload["curves"] if row["regra"] == rule]
+        target = next(iter(problem.targets.values()))
+        for boundary, expected in [
+            ("infeasible_value", "infeasible"),
+            ("feasible_value", "optimal"),
+        ]:
+            value = threshold[boundary]
+            if rule == "tolerance_lower":
+                value = target * (1 - value)
+            matches = [
+                row
+                for row in rows
+                if row["valor_limite"] is not None and abs(row["valor_limite"] - value) < 1e-9
+            ]
+            assert len(matches) == 1 and matches[0]["status"] == expected
+    assert all(
+        row["status"] == "infeasible"
+        for row in payload["curves"]
+        if row["regra"] in {"daily_variation", "tolerance_upper"}
+    )
+    assert any(
+        row["regra"] == "tolerance_lower" and row["valor_limite"] == 0 and row["plano_verificado"]
+        for row in payload["curves"]
+    )
+    assert any(
+        row["regra"] == "tolerance_upper" and row["maximo_semanal_kg"] is None
+        for row in payload["curves"]
+    )
+
+
+def test_saved_intro_free_reference_is_separate_from_single_rule_curves(problem):
+    payload = load_artifact(ROOT / "data/processed/minerva_sensibilidade_isolada.json")
+    assert payload["holdout_used"] is False
+    base, extra, free = payload["base"], payload["extrapolation_only"], payload["free_reference"]
+    assert base["status"] == extra["status"] == "infeasible"
+    assert extra["extrapolacao"] and not base["extrapolacao"]
+    for name in [
+        "variacao_interna_rs",
+        "transicao_inicial_rs",
+        "minimo_semanal_kg",
+        "maximo_semanal_kg",
+    ]:
+        assert extra[name] == base[name]
+    assert free["status"] == "optimal" and free["plano_verificado"]
+    assert not free["scenario"]["enforce_initial_anchor"]
+    assert not free["scenario"]["enforce_daily_variation"]
+    assert not free["scenario"]["enforce_weekly_targets"]
+    assert free["scenario"]["extrapolate"]
+    beta = problem.artifact["coefficients"]["ln_preco"]
+    expected_price = problem.costs[0] / (1 - problem.tax_rate) * beta / (beta + 1)
+    assert free["preco_otimo_kg"] == pytest.approx(expected_price)
+    assert free["margem_prevista_rs"] == pytest.approx(free["margem_analitica_rs"], abs=0.02)
+
+
+def test_initial_price_sensitivity_preserves_every_operational_rule(problem):
+    payload = load_artifact(ROOT / "data/processed/minerva_sensibilidade_preco_anterior.json")
+    assert payload["holdout_used"] is False
+    assert payload["initial_price_observed"] == problem.initial_price
+    assert payload["unit_cost_kg"] == problem.costs[0]
+    assert payload["tax_rate"] == problem.tax_rate
+    assert payload["model_core_sha256"] == problem.artifact["model_core_sha256"]
+    cases = payload["cases"]
+    assert len(cases) > 10
+    assert len({row["preco_anterior_kg"] for row in cases}) == len(cases)
+    historical = [row for row in cases if row["historico"]]
+    assert len(historical) == 1
+    assert historical[0]["preco_anterior_kg"] == problem.initial_price
+    assert historical[0]["status"] == "infeasible"
+    assert any(row["status"] == "optimal" for row in cases)
+    target = next(iter(problem.targets.values()))
+    for row in cases:
+        assert row["variacao_interna_rs"] == problem.daily_variation
+        assert row["primeira_mudanca_rs"] == problem.init_var
+        assert row["minimo_semanal_kg"] == target * (1 - problem.tol_lower)
+        assert row["maximo_semanal_kg"] == target * (1 + problem.tol_upper)
+        assert not row["extrapolacao"]
+        assert row["model_core_sha256"] == payload["model_core_sha256"]
+        if row["status"] == "infeasible":
+            assert row["margem_prevista_rs"] is None
+        else:
+            assert row["plano_verificado"]
+
+
+def test_financial_highlights_preserve_single_rule_scope_before_test(problem):
+    payload = load_artifact(ROOT / "data/processed/minerva_sensibilidade_isolada.json")
+    financial = pd.read_csv(ROOT / "reports/tables/03_comparacao_financeira_uma_regra.csv")
+    highlights = payload["financial_highlights"]
+    assert len(highlights) == 9
+    assert set(financial["cenario"]) == set(highlights)
+    base = payload["base"]
+    columns = [
+        "variacao_interna_rs",
+        "transicao_inicial_rs",
+        "minimo_semanal_kg",
+        "maximo_semanal_kg",
+        "extrapolacao",
+    ]
+    for key, row in highlights.items():
+        if key != "livre":
+            changed = sum(
+                row[col] != base[col]
+                if row[col] is None or base[col] is None
+                else not np.isclose(row[col], base[col], rtol=0, atol=1e-8)
+                for col in columns
+            )
+            assert changed <= 1
+            assert row["primeira_mudanca_limitada"]
+            assert row["variacao_interna_limitada"]
+        total = financial.loc[
+            (financial["cenario"] == key) & (financial["periodo"] == "total")
+        ].iloc[0]
+        if row["margem_prevista_rs"] is None:
+            assert pd.isna(total["margem_prevista_rs"])
+        else:
+            assert total["margem_prevista_rs"] == pytest.approx(
+                row["margem_prevista_rs"], abs=0.02
+            )

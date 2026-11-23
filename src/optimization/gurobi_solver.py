@@ -26,6 +26,8 @@ class Scenario:
     enforce_initial_anchor: bool = True
     extrapolate: bool = False
     initial_price: float | None = None
+    enforce_weekly_minimum: bool = True
+    enforce_weekly_maximum: bool = True
 
     def __post_init__(self) -> None:
         if not self.name.strip():
@@ -34,6 +36,14 @@ class Scenario:
             not np.isfinite(self.initial_price) or self.initial_price <= 0
         ):
             raise ValueError("O preço inicial hipotético precisa ser finito e positivo.")
+
+    @property
+    def weekly_minimum_active(self) -> bool:
+        return self.enforce_weekly_targets and self.enforce_weekly_minimum
+
+    @property
+    def weekly_maximum_active(self) -> bool:
+        return self.enforce_weekly_targets and self.enforce_weekly_maximum
 
 
 def _warm_prices(
@@ -70,8 +80,8 @@ def _warm_prices(
             unconstrained_volume = np.sum(qref[mask] * (prices[mask] / reference) ** beta)
             desired_volume = np.clip(
                 unconstrained_volume,
-                target * (1 - problem.tol_lower),
-                target * (1 + problem.tol_upper),
+                target * (1 - problem.tol_lower) if scenario.weekly_minimum_active else 0.0,
+                target * (1 + problem.tol_upper) if scenario.weekly_maximum_active else np.inf,
             )
             constant_price = reference * (desired_volume / qref[mask].sum()) ** (1 / beta)
             prices[mask] = np.clip(constant_price, lo[mask], hi[mask])
@@ -86,11 +96,9 @@ def _warm_prices(
     if scenario.enforce_weekly_targets:
         for week, target in problem.targets.items():
             volume = volumes[np.asarray(problem.weeks) == week].sum()
-            if (
-                not target * (1 - problem.tol_lower) - 1e-6
-                <= volume
-                <= (target * (1 + problem.tol_upper) + 1e-6)
-            ):
+            if scenario.weekly_minimum_active and volume < target * (1 - problem.tol_lower) - 1e-6:
+                return None
+            if scenario.weekly_maximum_active and volume > target * (1 + problem.tol_upper) + 1e-6:
                 return None
     return prices
 
@@ -154,6 +162,13 @@ def solve_scenario(
     )
     qmin = qref * (upper / reference) ** beta
     qmax = qref * (lower / reference) ** beta
+    if scenario.weekly_maximum_active:
+        weekly_caps = np.array(
+            [problem.targets[week] * (1 + problem.tol_upper) for week in problem.weeks]
+        )
+        qmax = np.minimum(qmax, weekly_caps)
+        implied_lower = reference * (weekly_caps / qref) ** (1 / beta)
+        lower = np.maximum(lower, implied_lower)
     rho = 1 + 1 / beta
     result: dict[str, Any] = {
         "scenario": asdict(scenario),
@@ -221,12 +236,14 @@ def solve_scenario(
                 if scenario.enforce_weekly_targets:
                     for week, target in problem.targets.items():
                         total = gp.quicksum(q[t] for t in range(n) if problem.weeks[t] == week)
-                        model.addConstr(
-                            total >= target * (1 - problem.tol_lower), name=f"meta_min_{week}"
-                        )
-                        model.addConstr(
-                            total <= target * (1 + problem.tol_upper), name=f"meta_max_{week}"
-                        )
+                        if scenario.weekly_minimum_active:
+                            model.addConstr(
+                                total >= target * (1 - problem.tol_lower), name=f"meta_min_{week}"
+                            )
+                        if scenario.weekly_maximum_active:
+                            model.addConstr(
+                                total <= target * (1 + problem.tol_upper), name=f"meta_max_{week}"
+                            )
                 model.setObjective(
                     gp.quicksum(revenue)
                     - gp.quicksum(float(problem.costs[t]) * q[t] / 1000 for t in range(n)),
@@ -322,7 +339,9 @@ def solve_scenario(
     weekly["meta_atendida"] = (weekly["folga_inferior_kg"] >= -1e-4) & (
         weekly["folga_superior_kg"] >= -1e-4
     )
-    weekly["meta_ativa"] = scenario.enforce_weekly_targets
+    weekly["meta_ativa"] = scenario.weekly_minimum_active or scenario.weekly_maximum_active
+    weekly["minimo_ativo"] = scenario.weekly_minimum_active
+    weekly["maximo_ativo"] = scenario.weekly_maximum_active
     weekly = weekly.reset_index()
     demand_residual = float(np.max(np.abs(volumes - solver_volumes)))
     revenue_residual = float(
@@ -341,11 +360,18 @@ def solve_scenario(
         "targets_ok": targets_ok,
         "required_variation_ok": variation_ok or not scenario.enforce_daily_variation,
         "required_initial_ok": initial_ok or not scenario.enforce_initial_anchor,
-        "required_targets_ok": targets_ok or not scenario.enforce_weekly_targets,
+        "required_targets_ok": bool(
+            (not scenario.weekly_minimum_active or (weekly["folga_inferior_kg"] >= -1e-4).all())
+            and (
+                not scenario.weekly_maximum_active or (weekly["folga_superior_kg"] >= -1e-4).all()
+            )
+        ),
         "active_constraints": {
             "price_support": not scenario.extrapolate,
             "daily_variation": scenario.enforce_daily_variation,
-            "weekly_targets": scenario.enforce_weekly_targets,
+            "weekly_targets": scenario.weekly_minimum_active or scenario.weekly_maximum_active,
+            "weekly_minimum": scenario.weekly_minimum_active,
+            "weekly_maximum": scenario.weekly_maximum_active,
             "initial_anchor": scenario.enforce_initial_anchor,
         },
         "max_daily_change_rs": float(np.max(abs(changes[1:]))) if n > 1 else 0.0,
