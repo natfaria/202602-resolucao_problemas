@@ -83,10 +83,9 @@ Código-fonte:
 
 ## Organização do repositório
 
-A estrutura segue o layout do **cookiecutter-data-science**: `Makefile` com alvos como
+O projeto foi implementado usando o **cookiecutter-data-science**: `Makefile` com alvos como
 `create_environment` e `data`, `src/config.py`, `data/` dividido em `raw`, `interim` e `processed`,
-e pastas `models/`, `notebooks/`, `reports/` e `docs/`. O repositório não menciona o template
-explicitamente.
+e pastas `models/`, `notebooks/`, `reports/` e `docs/`.
 
 Convenção adotada: `src/` é o pacote Python que contém o produto (lógica e interface). `notebooks/`
 é exploração e relatório; `scripts/` guarda utilitários de geração de relatórios; `tests/` valida o
