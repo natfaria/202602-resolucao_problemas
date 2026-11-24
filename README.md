@@ -14,6 +14,95 @@ exige relaxar o limite da primeira mudança de preço. As alternativas e as sens
 Para o contexto completo do enunciado, das premissas e do estado atual, leia
 [contexto do desafio](docs/planejamento/contexto-desafio-minerva.md).
 
+## Como rodar do zero
+
+Pré-requisitos: Git, Python 3.10 ou superior (a revisão usa 3.13) e uma licença válida do Gurobi 13,
+necessária para resolver a otimização.
+
+**1. Clonar o repositório**
+
+```bash
+git clone git@github-mestrado:natfaria/202602-resolucao_problemas.git
+cd 202602-resolucao_problemas
+```
+
+Se o alias SSH `github-mestrado` não estiver configurado, use a URL do GitHub do repositório.
+
+**2. Criar o ambiente virtual**
+
+```bash
+python3 -m venv .venv
+```
+
+**3. Instalar as dependências**
+
+```bash
+.venv/bin/python -m pip install -U pip
+.venv/bin/python -m pip install -r requirements.txt
+```
+
+O `requirements.txt` instala também o próprio pacote `src` em modo editável (`-e .`).
+
+**4. Verificar o Gurobi**
+
+```bash
+.venv/bin/python -c "import gurobipy; print('Gurobi', '.'.join(map(str, gurobipy.gurobi.version())))"
+```
+
+Deve aparecer `Gurobi 13.x`. Se a importação falhar, a licença não está disponível neste ambiente.
+
+**5. Rodar os testes**
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
+Devem passar todos os testes (99 no estado atual, em cerca de 25 segundos).
+
+**6. Usar a ferramenta de planejamento**
+
+```bash
+.venv/bin/python -m streamlit run src/app/ferramenta_precos.py
+```
+
+Abra o endereço indicado no terminal (normalmente `http://localhost:8501`). As entradas da curva,
+da planilha e das restrições já estão versionadas; não é preciso rodar os notebooks para usar a
+ferramenta.
+
+**7. (Opcional) Reproduzir o pipeline dos notebooks**
+
+Os artefatos já estão no repositório. Reexecute as etapas apenas para reproduzir ou alterar
+premissas. Cada etapa sobrescreve arquivos versionados, então o `git status` mostrará as mudanças.
+
+- **a.** Preparação e EDA (rápido):
+  ```bash
+  .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/1.0-minerva-eda-preparacao.ipynb --ExecutePreprocessor.timeout=300
+  ```
+- **b.** Curva preditiva (publica `models/preditivo_diario/curva_demanda.json`):
+  ```bash
+  .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/2.0.1-minerva-modelo-preditivo.ipynb --ExecutePreprocessor.timeout=300
+  ```
+- **c.** Otimização de referência (publica `models/otimizacao/entradas_planejamento.json` e os planos; usa o Gurobi):
+  ```bash
+  .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/3.0-minerva-otimizacao-precos.ipynb --ExecutePreprocessor.timeout=300
+  ```
+- **d.** Flexibilizações graduais (usa o Gurobi em muitas resoluções):
+  ```bash
+  .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/3.1-minerva-simulacao-relaxacoes.ipynb --ExecutePreprocessor.timeout=300
+  ```
+- **e.** Atualizar os relatórios a partir dos artefatos:
+  ```bash
+  .venv/bin/python scripts/update_project_report.py
+  ```
+
+Para abrir os notebooks de forma interativa, use `.venv/bin/python -m jupyter lab`.
+
+**8. (Opcional) Ver a documentação**
+
+```bash
+.venv/bin/python -m mkdocs serve --config-file docs/mkdocs.yml
+```
+
 ## Visão geral do fluxo
 
 O projeto é dividido em etapas que se comunicam por arquivos persistidos, com verificação de
@@ -37,6 +126,7 @@ integridade por hash:
 ## Estrutura do repositório
 
 ```
+├── .streamlit/       tema visual da ferramenta (cores e fonte)
 ├── data/
 │   ├── raw/          fonte original (planilha do desafio), não modificada
 │   ├── interim/      histórico limpo, desenvolvimento, holdout e restrições
@@ -146,7 +236,7 @@ ferramenta. Modelos históricos usados apenas para compatibilidade ficam em `tes
 Lint e formatação:
 
 ```bash
-make lint      # ruff check e formato
+make lint      # ruff check e formato (hoje acusa formatação pendente em src/modeling/demand_curve.py)
 make format    # aplica as correções automáticas
 ```
 
