@@ -5,9 +5,9 @@ As instruções estão em [Instalação e reprodução](planejamento/getting-sta
 
 A leitura narrativa está organizada em três documentos na pasta `storytelling/`:
 
-- [Análise exploratória](storytelling/storytelling-eda-minerva.md).
-- [Curva de demanda](storytelling/curva-de-demanda-modelo-2-0.md).
-- [Otimização e horizonte rolante](storytelling/storytelling-otimizacao-minerva.md).
+- [Análise exploratória](storytelling/01-storytelling-eda-minerva.md).
+- [Curva de demanda](storytelling/02-curva-de-demanda-modelo.md).
+- [Otimização e horizonte rolante](storytelling/03-storytelling-otimizacao-minerva.md).
 
 Na raiz do repositório:
 
