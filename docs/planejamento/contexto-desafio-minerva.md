@@ -74,8 +74,10 @@ Código-fonte:
 
 - `src/modeling/`: curva de demanda, ajuste, smearing e benchmarks.
 - `src/optimization/`: contrato de entradas (`planning_inputs.py`), problema e viabilidade
-  (`price_schedule.py`), solver Gurobi (`gurobi_solver.py`), estudo de relaxações e comparação com o
-  holdout.
+  (`price_schedule.py`), solver Gurobi (`gurobi_solver.py`), estudo de relaxações, comparação com o
+  holdout e a ferramenta de planejamento (`ferramenta.py`).
+- `app/ferramenta_precos.py`: interface Streamlit da ferramenta do item 0.5. Execução a partir da
+  raiz: `.venv/bin/python -m streamlit run app/ferramenta_precos.py`.
 
 ### Curva escolhida (notebook 2.0.1)
 
@@ -132,14 +134,12 @@ principal é o WMAPE diário: 36,9% em média na validação e 37,2% no holdout.
 
 ## 7. Riscos e pendências
 
-1. **A ferramenta do item 0.5 não existe como interface.** Há funções reutilizáveis
-   (`problem_from_frames`, `solve_scenario`, `load_planning_inputs`), mas nenhuma entrada que receba
-   preço anterior, variação diária, limites semanais e relaxações para um caso novo, nem saída em
-   tabela e gráfico. O notebook 3.0 executa cenários fixos definidos no próprio código.
-2. **Links quebrados na documentação.** Os storytelling foram renomeados para `01-`, `02-` e `03-`,
-   mas o `README.md`, `docs/README.md`, `docs/mkdocs.yml`, `docs/planejamento/index.md` e
-   `modelo-matematico-otimizacao-precos.md` ainda usam os nomes antigos. `mkdocs build --strict`
-   falha com 12 avisos.
+1. **A ferramenta do item 0.5 existe, com escopo limitado.** A interface Streamlit recebe preço
+   anterior, limites da primeira mudança e entre dias, meta, tolerâncias, custo, imposto e as regras
+   a relaxar. Devolve plano diário, resumo semanal, gráficos e CSV. O horizonte é fixo (03/11 a
+   14/11/2025), herdado das entradas congeladas, e a curva não é reajustada.
+2. **Links da documentação corrigidos.** Os storytelling usam os nomes `01-`, `02-` e `03-`, e
+   `mkdocs build --strict` volta a passar.
 3. **O plano selecionado depende de uma regra não original.** Ele começa com um salto de
    R$ 109,81/kg, que viola a regra de variação máxima. O teto de R$ 120/kg para a primeira mudança foi
    definido no notebook; o `models/otimizacao/limites_flexibilizacoes.json` deixa esse teto nulo.

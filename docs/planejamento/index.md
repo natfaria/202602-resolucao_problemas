@@ -1,10 +1,11 @@
 # Planejamento e funcionamento do projeto
 
-[Storytelling da otimização](../storytelling/storytelling-otimizacao-minerva.md): o caso original é inviável; as exceções mínimas, as sensibilidades e o uso em horizonte rolante são apresentados com suas condições.
+[Storytelling da otimização](../storytelling/03-storytelling-otimizacao-minerva.md): o caso original é inviável; as exceções mínimas, as sensibilidades e o uso em horizonte rolante são apresentados com suas condições.
 
 O fluxo conecta preparação de dados, previsão de demanda, otimização de preços e estudo de
 flexibilizações por artefatos persistidos e verificados.
 
+- [Contexto do desafio: enunciado, dados, premissas e estado](contexto-desafio-minerva.md).
 - [Etapas, entradas e entregas](plano-acao-tres-notebooks.md).
 - [Modelo matemático de otimização](modelo-matematico-otimizacao-precos.md).
 - [Casos de referência e comparações operacionais](plano-otimizador-margem.md).
@@ -16,4 +17,4 @@ flexibilizações recebe esse artefato e a curva nele registrada, mantendo as me
 
 - [Instalação, execução e verificação](getting-started.md).
 - [Referências metodológicas](../referencias-bibliograficas.md).
-- [Narrativa atual da demanda](../storytelling/curva-de-demanda-modelo-2-0.md).
+- [Narrativa atual da demanda](../storytelling/02-curva-de-demanda-modelo.md).
