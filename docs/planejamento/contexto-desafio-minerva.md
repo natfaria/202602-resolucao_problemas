@@ -76,8 +76,21 @@ Código-fonte:
 - `src/optimization/`: contrato de entradas (`planning_inputs.py`), problema e viabilidade
   (`price_schedule.py`), solver Gurobi (`gurobi_solver.py`), estudo de relaxações, comparação com o
   holdout e a ferramenta de planejamento (`ferramenta.py`).
-- `app/ferramenta_precos.py`: interface Streamlit da ferramenta do item 0.5. Execução a partir da
-  raiz: `.venv/bin/python -m streamlit run app/ferramenta_precos.py`.
+- `src/app/ferramenta_precos.py`: interface Streamlit da ferramenta do item 0.5. Execução a partir da
+  raiz: `.venv/bin/python -m streamlit run src/app/ferramenta_precos.py`. Os logos ficam em
+  `src/app/assets/`. A lógica de planejamento fica em `src/optimization/ferramenta.py`; a interface
+  só chama essas funções.
+
+## Organização do repositório
+
+A estrutura segue o layout do **cookiecutter-data-science**: `Makefile` com alvos como
+`create_environment` e `data`, `src/config.py`, `data/` dividido em `raw`, `interim` e `processed`,
+e pastas `models/`, `notebooks/`, `reports/` e `docs/`. O repositório não menciona o template
+explicitamente.
+
+Convenção adotada: `src/` é o pacote Python que contém o produto (lógica e interface). `notebooks/`
+é exploração e relatório; `scripts/` guarda utilitários de geração de relatórios; `tests/` valida o
+código de `src/`.
 
 ### Curva escolhida (notebook 2.0.1)
 
