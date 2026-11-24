@@ -2,13 +2,13 @@
 
 Execução, a partir da raiz do repositório:
 
-    .venv/bin/python -m streamlit run app/ferramenta_precos.py
+    .venv/bin/python -m streamlit run src/app/ferramenta_precos.py
 """
 
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 import matplotlib.pyplot as plt
@@ -25,7 +25,7 @@ from src.optimization.planning_inputs import load_planning_inputs
 
 st.set_page_config(
     page_title="Planejamento de preços: Produto_A",
-    page_icon=str(ROOT / "app/assets/minerva_foods_icone.png"),
+    page_icon=str(ROOT / "src/app/assets/minerva_foods_icone.png"),
     layout="wide",
 )
 
@@ -148,7 +148,7 @@ st.markdown(ESTILO, unsafe_allow_html=True)
 st.markdown(rodape_originais(base, payload), unsafe_allow_html=True)
 
 coluna_logo, coluna_titulo = st.columns([1, 5], vertical_alignment="center")
-coluna_logo.image(str(ROOT / "app/assets/minerva_foods_logo.png"), width=200)
+coluna_logo.image(str(ROOT / "src/app/assets/minerva_foods_logo.png"), width=200)
 coluna_titulo.title("Planejamento de preços: Produto_A")
 st.caption(
     "Escolhe um preço por dia para maximizar a margem prevista pela curva de demanda congelada. "
