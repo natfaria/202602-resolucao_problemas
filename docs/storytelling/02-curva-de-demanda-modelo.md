@@ -13,7 +13,7 @@ calendário no ajuste e quatro coeficientes. O domínio publicado é segunda a s
 O WMAPE diário médio nos seis folds é **36,85%**. No holdout histórico,
 o WMAPE diário é **37,24%** e o semanal é **18,55%**.
 Esses erros descrevem desempenho observado; não estabelecem suficiência para uso comercial ou
-uma garantia de atendimento das metas. A [história da otimização](storytelling-otimizacao-minerva.md)
+uma garantia de atendimento das metas. A [história da otimização](03-storytelling-otimizacao-minerva.md)
 mostram que o caso com todas as regras originais é inviável.
 
 ## 2. Dados, calendário e hipóteses
@@ -21,7 +21,7 @@ mostram que o caso com todas as regras originais é inviável.
 A planilha contém 86 registros de um produto: 76 observações de desenvolvimento, de 01/08 a
 31/10/2025, e dez observações de holdout, de 03/11 a 14/11/2025. Preço médio realizado é receita
 sobre volume. Não se assume que esse valor seja um preço de lista único e controlável.
-A [exploração dos dados](storytelling-eda-minerva.md) identifica associação negativa entre preço e
+A [exploração dos dados](01-storytelling-eda-minerva.md) identifica associação negativa entre preço e
 volume nos dias úteis e diferenças de nível por dia da semana, sem identificar causalidade.
 
 Médias de preço parecidas entre dias não excluem contribuições do preço: numa curva não linear,
@@ -42,7 +42,7 @@ dias úteis avaliados por origem. Coeficientes e smearing são calculados apenas
 fold; não há atualização dentro do horizonte. Essa separação segue Hyndman e Athanasopoulos
 (2021, seção 5.10), nas [referências](../referencias-bibliograficas.md).
 Essa é a regra de avaliação das previsões. O uso operacional, com execução de uma semana e
-replanejamento semanal, está explicado na [história da otimização](storytelling-otimizacao-minerva.md#uso-operacional-planejar-duas-semanas-e-executar-uma).
+replanejamento semanal, está explicado na [história da otimização](03-storytelling-otimizacao-minerva.md#uso-operacional-planejar-duas-semanas-e-executar-uma).
 
 **Tabela R2.1.** Calendário da avaliação; fonte: `calendario_validacao_cruzada.csv`.
 

@@ -254,7 +254,7 @@ Ele não permite concluir que:
 - Documento do Desafio Minerva-Unifesp-ITA: `docs/referencias/Minerva_Unifesp_ITA.pdf`.
 - PHILLIPS, Robert L. *Pricing and Revenue Optimization*. 2. ed.
 - [Referências metodológicas completas](../referencias-bibliograficas.md).
-- [Storytelling da otimização e esquema de horizonte rolante](storytelling-otimizacao-minerva.md#uso-operacional-planejar-duas-semanas-e-executar-uma).
+- [Storytelling da otimização e esquema de horizonte rolante](03-storytelling-otimizacao-minerva.md#uso-operacional-planejar-duas-semanas-e-executar-uma).
 
 ## Resumo Alto Nível
 - A base é utilizável: não há dados ausentes, duplicados ou valores inválidos nas 76 observações de desenvolvimento.

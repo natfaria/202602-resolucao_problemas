@@ -2,7 +2,7 @@
 
 <!-- Gerado por scripts/update_project_report.py. -->
 
-Esta etapa transforma a [curva de demanda](curva-de-demanda-modelo-2-0.md) em decisões de preço.
+Esta etapa transforma a [curva de demanda](02-curva-de-demanda-modelo.md) em decisões de preço.
 A narrativa acompanha os notebooks `3.0-minerva-otimizacao-precos.ipynb` e
 `3.1-minerva-simulacao-relaxacoes.ipynb`: primeiro entende o problema, depois verifica sua
 viabilidade e, por fim, compara mudanças nas regras e nas premissas.
