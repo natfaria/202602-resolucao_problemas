@@ -20,6 +20,7 @@ nav:
   - Início: index.md
   - Contexto do desafio: contexto-desafio-minerva.md
   - Modelo matemático: modelo-matematico-otimizacao-precos.md
+  - Inventário dos artefatos: inventario-artefatos.md
   - Storytelling da exploração: storytelling/01-storytelling-eda-minerva.md
   - Storytelling da curva de demanda: storytelling/02-curva-de-demanda-modelo.md
   - Storytelling da otimização: storytelling/03-storytelling-otimizacao-minerva.md

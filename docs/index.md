@@ -9,6 +9,7 @@ como reproduzir a análise e onde estão os artefatos. Esta documentação compl
   [curva de demanda](storytelling/02-curva-de-demanda-modelo.md) e
   [otimização e flexibilizações](storytelling/03-storytelling-otimizacao-minerva.md).
 - [Referências](referencias-bibliograficas.md).
+- [Inventário dos artefatos](inventario-artefatos.md): origem, consumidores e papel na entrega.
 
 Os notebooks em `notebooks/` contêm a análise completa. Os resumos apenas apontam os
 resultados principais e as limitações de cada etapa.

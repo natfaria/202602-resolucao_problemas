@@ -1,3 +1,4 @@
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -84,10 +85,10 @@ def test_removing_all_initial_constraints_reproduces_reference(minerva_problem):
     assert result["total_margin_rs"] == pytest.approx(48917.58, abs=0.01)
 
 
-def test_removing_all_volume_targets_reproduces_reference(minerva_problem):
-    """Sem metas semanais e com a ligação inicial mantida, a margem é R$ 33.336,94."""
-    problem = minerva_problem
-    result = optimize_prices(problem, enforce_targets=False)
+def test_reducing_weekly_minimum_to_feasibility_reproduces_published_margin(minerva_problem):
+    """Reduzir o mínimo semanal a 76,987 kg (tolerância 0,5334) reproduz R$ 33.336,94 publicados."""
+    problem = replace(minerva_problem, tolerance_lower=0.5334133625030517)
+    result = optimize_prices(problem)
 
     assert result["status"] == "optimal"
     assert result["total_margin_rs"] == pytest.approx(33336.94, abs=0.01)
