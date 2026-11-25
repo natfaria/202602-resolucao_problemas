@@ -23,6 +23,7 @@ from src.optimization.ferramenta import (
     restricoes_da_solucao,
     rotulos_dias,
 )
+from src.optimization.diagnostico import diagnosticar
 from src.optimization.planning_inputs import load_planning_inputs
 
 st.set_page_config(
@@ -367,6 +368,33 @@ with aba_planejamento:
         )
         st.session_state["valor_anterior"] = valor_anterior
     resultado = st.session_state["resultado"]
+
+    with st.expander("Diagnóstico: o que precisa mudar para existir um plano", expanded=resultado["diario"] is None):
+        st.write(
+            "Usa as entradas atuais do formulário. Para cada regra, sozinha, mostra a menor "
+            "flexibilização que permite um plano e a margem prevista nesse ponto."
+        )
+        if st.button("Calcular diagnóstico", key="botao_diagnostico"):
+            problema_diagnostico = problema_da_ferramenta(base, **entradas["valores"])
+            st.session_state["diagnostico"] = {
+                "entradas": entradas,
+                "status": planejar(problema_diagnostico)["status_texto"],
+                "tabela": diagnosticar(problema_diagnostico),
+            }
+        if "diagnostico" in st.session_state:
+            diagnostico_salvo = st.session_state["diagnostico"]
+            st.caption(f"Com as regras originais: {diagnostico_salvo['status'].lower()}.")
+            if diagnostico_salvo["entradas"] != entradas:
+                st.warning("As entradas mudaram desde o último diagnóstico. Calcule de novo para atualizar.")
+            st.dataframe(
+                diagnostico_salvo["tabela"].round(4),
+                hide_index=True,
+                width="stretch",
+                column_config={
+                    "Menor valor com plano": st.column_config.NumberColumn(format="%.4f"),
+                    "Margem no menor valor (R$)": st.column_config.NumberColumn(format="R$ %.2f"),
+                },
+            )
 
     if resultado["diario"] is None:
         st.error(f"{resultado['status_texto']}. Maior volume alcançável por semana, abaixo.")
