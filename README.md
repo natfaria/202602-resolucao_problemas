@@ -188,7 +188,7 @@ sensibilidade, os benchmarks e a ferramenta. O lint cobre `src/`, pelas regras d
 ## Artefatos
 
 O [inventário dos artefatos](docs/inventario-artefatos.md) relaciona as fontes, os consumidores,
-os resultados reproduzíveis e as figuras históricas preservadas para avaliação.
+e os resultados reproduzíveis.
 
 - `data/raw/`: fonte original (planilha do desafio), não modificada.
 - `data/interim/`: holdout e restrições, separados pela etapa 1.0.
