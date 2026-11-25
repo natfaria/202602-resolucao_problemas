@@ -196,13 +196,13 @@ fold; não há atualização dentro do horizonte. Essa separação segue Hyndman
 Essa é a regra de avaliação das previsões. O uso operacional, com execução de uma semana e
 replanejamento semanal, está explicado na [história da otimização](storytelling-otimizacao-minerva.md#uso-operacional-planejar-duas-semanas-e-executar-uma).
 
-**Tabela R2.1.** Calendário da avaliação; fonte: `calendario_validacao_cruzada.csv`.
+**Tabela R2.1:** Calendário da avaliação; fonte: `calendario_validacao_cruzada.csv`.
 
 {fold_table}
 
 ![Figura R2.1: calendário dos folds](../assets/figures/preditivo_diario/calendario_folds.png)
 
-**Figura R2.1.** Desenvolvimento usado para ajuste e dez dias úteis futuros por fold. As datas
+**Figura R2.1:** Desenvolvimento usado para ajuste e dez dias úteis futuros por fold. As datas
 avaliadas se sobrepõem entre origens; os folds não são amostras independentes. Fonte: notebook `2.0.1`.
 
 A métrica principal é a média dos WMAPEs diários dos seis folds, com igual peso por origem.
@@ -216,7 +216,7 @@ operacional, não um teste estatístico de equivalência. `T1` é somente sensib
 
 ## 4. Comparação e benchmark
 
-**Tabela R2.2.** Painel atual; fonte: `comparacao_candidatos.csv`. `T1` não participa da seleção.
+**Tabela R2.2:** Painel atual; fonte: `comparacao_candidatos.csv`. `T1` não participa da seleção.
 
 {candidate_table}
 
@@ -227,7 +227,7 @@ principal nesses folds; isso não demonstra igualdade entre os dias.
 
 ![Figura R2.2: comparação dos candidatos por fold](../assets/figures/preditivo_diario/comparacao_candidatos.png)
 
-**Figura R2.2.** WMAPE diário médio e por fold. As barras de erro mostram desvio-padrão entre
+**Figura R2.2:** WMAPE diário médio e por fold. As barras de erro mostram desvio-padrão entre
 origens, sem interpretação de intervalo de confiança. Fonte: notebook `2.0.1`.
 
 Como referência adicional, a média histórica do mesmo dia da semana, sem preço, tem WMAPE diário
@@ -242,7 +242,7 @@ A especificação log-log é ajustada às 76 observações de desenvolvimento:
 
 `ln(volume) = {number(model["coefficients"]["const"], 4)} + ({number(beta, 4)}) ln(preço) + efeitos de calendário`.
 
-**Tabela R2.3.** Coeficientes e intervalos; fonte: `coeficientes_ajuste_final.csv`.
+**Tabela R2.3:** Coeficientes e intervalos; fonte: `coeficientes_ajuste_final.csv`.
 
 {coefficient_table}
 
@@ -258,7 +258,7 @@ todas as 76 linhas. Sob heterocedasticidade, um único fator não garante corre�
 em todos os preços e contextos. HC3 segue MacKinnon e White (1985): ajusta a covariância para
 inferência, sem alterar os coeficientes ou tornar o ajuste resistente a pontos influentes.
 
-**Tabela R2.4.** Exemplos da curva atual, dentro do suporte observado; fonte: artefato preditivo.
+**Tabela R2.4:** Exemplos da curva atual, dentro do suporte observado; fonte: artefato preditivo.
 
 {example_table}
 
@@ -271,16 +271,16 @@ A retirada de uma observação por vez preserva o sinal negativo, mas altera a m
 
 ![Figura R2.3: diagnósticos do ajuste](../assets/figures/preditivo_diario/diagnosticos.png)
 
-**Figura R2.3.** Resíduos, QQ-plot e influência nas 76 observações. Os limiares de Cook sinalizam
+**Figura R2.3:** Resíduos, QQ-plot e influência nas 76 observações. Os limiares de Cook sinalizam
 investigação e não determinam exclusão automática. Fonte: notebook `2.0.1`.
 
-**Tabela R2.5.** Faixas observadas usadas como limites de aplicação; fonte: artefato preditivo.
+**Tabela R2.5:** Faixas observadas usadas como limites de aplicação; fonte: artefato preditivo.
 
 {support_table}
 
 ![Figura R2.4: curvas e dados](../assets/figures/preditivo_diario/curvas_suporte.png)
 
-**Figura R2.4.** No mesmo preço, a sexta tem menor volume previsto que segunda a quinta.
+**Figura R2.4:** No mesmo preço, a sexta tem menor volume previsto que segunda a quinta.
 Os pontos mostram a dispersão que a curva não explica. Fonte: notebook `2.0.1`.
 
 Permanecer entre os preços mínimo e máximo observados reduz extrapolação, mas não garante
@@ -297,17 +297,17 @@ uma revisão, serão necessárias novas observações para uma avaliação final
 As hipóteses de calendário foram formuladas no desenvolvimento completo; a comparação é
 condicional a esse catálogo, sem validação aninhada de todo o processo exploratório.
 
-**Tabela R2.6.** Avaliação nos dez dias úteis; fonte: `metricas_holdout.csv`.
+**Tabela R2.6:** Avaliação nos dez dias úteis; fonte: `metricas_holdout.csv`.
 
 {holdout_table}
 
-**Tabela R2.7.** Totais semanais; fonte: `resumo_semanal_holdout.csv`.
+**Tabela R2.7:** Totais semanais; fonte: `resumo_semanal_holdout.csv`.
 
 {weekly_table}
 
 ![Figura R2.5: holdout](../assets/figures/preditivo_diario/holdout.png)
 
-**Figura R2.5.** O previsto acompanha parte da variação diária, mas subestima os totais das duas
+**Figura R2.5:** O previsto acompanha parte da variação diária, mas subestima os totais das duas
 semanas. A comparação usa os preços efetivamente praticados. Fonte: notebook `2.0.1`.
 
 As duas semanas são subestimadas. O WMAPE semanal coincide com o módulo do viés agregado porque
@@ -423,7 +423,7 @@ atual e será recalculada antes de se tornar executável na rodada seguinte.
 
 ![Figura R3.1: planejamento e replanejamento semanal com novas entradas](../assets/figures/horizonte_rolante.png)
 
-**Figura R3.1.** A cada semana, o realizado e as entradas atualizadas alimentam uma nova instância.
+**Figura R3.1:** A cada semana, o realizado e as entradas atualizadas alimentam uma nova instância.
 O último preço praticado conecta as rodadas; o plano anterior da cauda não é executado
 automaticamente. Fonte: elaboração própria com apoio de IA; esquema conceitual, sem resultados simulados.
 
@@ -457,7 +457,7 @@ mencione 5%. A referência usa 30%, com sensibilidade separada para 5%.
 Veja a [fonte do problema](../referencias/Minerva_Unifesp_ITA.pdf) e a
 [formulação atual](../planejamento/modelo-matematico-otimizacao-precos.md).
 
-**Tabela R3.1.** Envelope com regras originais; fonte: `minerva_diagnostico_infactividade.json`.
+**Tabela R3.1:** Envelope com regras originais; fonte: `minerva_diagnostico_infactividade.json`.
 
 {diagnostic_table}
 
@@ -472,7 +472,7 @@ imposto hipotético de {number(100 * planning["tax_rate"], 0)}% e preço anterio
 A variação interna tem teto de R$ {number(limits["daily_variation_ceiling"])}/kg; a primeira mudança é
 examinada separadamente. Valores de grade não são aprovação comercial.
 
-**Tabela R3.2.** Mínimos pelo lado factível da bisseção e ausências de recuperação na faixa
+**Tabela R3.2:** Mínimos pelo lado factível da bisseção e ausências de recuperação na faixa
 examinada; fonte: `limiares_viabilidade.csv`. As tolerâncias são frações, não pontos percentuais.
 
 {min_table}
@@ -485,7 +485,7 @@ na tabela não substituem a precisão dos arquivos e a verificação das restri�
 
 ![Figura R3.2: curvas de flexibilização](../assets/figures/relaxacoes/curvas.png)
 
-**Figura R3.2.** Cada painel altera uma regra e mantém as demais. As curvas distinguem recuperar
+**Figura R3.2:** Cada painel altera uma regra e mantém as demais. As curvas distinguem recuperar
 viabilidade de obter margem adicional; casos sem plano não recebem margem. Fonte: notebook `3.1`.
 
 ## 4. Recuperar a viabilidade e escolher uma alternativa são decisões diferentes
@@ -494,14 +494,14 @@ Uma alteração mínima permite um plano, mas folgas adicionais ou mudanças com
 aumentar sua margem prevista. Por isso, o segundo notebook cruza alterações de primeira mudança,
 variação interna, piso e teto, mantendo cada condição identificada.
 
-**Tabela R3.3.** Destaques da grade eficiente; fonte: `alternativas.csv`. A referência financeira
+**Tabela R3.3:** Destaques da grade eficiente; fonte: `alternativas.csv`. A referência financeira
 é a recuperação mínima isolada admissível de maior margem, não o caso original inviável.
 
 {alt_table}
 
 ![Figura R3.3: comparação financeira das alternativas](../assets/figures/relaxacoes/alternativas_margem.png)
 
-**Figura R3.3.** As diferenças de margem partem da referência factível e não representam ganhos
+**Figura R3.3:** As diferenças de margem partem da referência factível e não representam ganhos
 realizados. As configurações mantêm as condições identificadas na tabela. Fonte: notebook `3.1`.
 
 As fronteiras são aproximadas pelas grades. A maior margem da grade não é a melhor combinação
@@ -520,7 +520,7 @@ intercepto gira a curva preservando o volume em R$ 1.300/kg em cada contexto. S�
 estresse, sem probabilidades ou interpretação de intervalo preditivo conjunto. Os modelos de
 cenário recebem hashes próprios; o modelo central publicado permanece intacto.
 
-**Tabela R3.4.** Comparação de reotimização e aplicação do plano central fixo; fonte:
+**Tabela R3.4:** Comparação de reotimização e aplicação do plano central fixo; fonte:
 `03_sensibilidade_premissas.csv`. Em todas as avaliações do plano fixo, a primeira ligação está
 removida; não se trata de um plano admissível sob a ligação original.
 
@@ -528,7 +528,7 @@ removida; não se trata de um plano admissível sob a ligação original.
 
 ![Figura R3.4: sensibilidade das premissas](../assets/figures/03_sensibilidade_premissas.png)
 
-**Figura R3.4.** Margem reotimizada e do plano central fixo; volume da primeira semana do plano
+**Figura R3.4:** Margem reotimizada e do plano central fixo; volume da primeira semana do plano
 fixo comparado com os limites originais. Fonte: notebook `3.0`.
 
 Reotimizar pressupõe conhecer a premissa antes de decidir. A avaliação do plano fixo expõe risco

@@ -1202,7 +1202,7 @@
   "financial_highlights": {
     "original": {
       "identificacao": "Original",
-      "descricao": "Todas as regras originais",
+      "descricao": "Todas as restrições originais",
       "regra": "original",
       "valor_limite": null,
       "variacao_interna_rs": 2.0,
@@ -1377,8 +1377,8 @@
       "plano_verificado": false
     },
     "livre": {
-      "identificacao": "Livre (teórico)",
-      "descricao": "Referência separada com todas as regras retiradas",
+      "identificacao": "Ótimo irrestrito (teórico)",
+      "descricao": "Ótimo irrestrito, com todas as restrições retiradas",
       "regra": "livre",
       "valor_limite": null,
       "variacao_interna_rs": 2.0,

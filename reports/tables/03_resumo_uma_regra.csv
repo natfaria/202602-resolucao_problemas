@@ -1,8 +1,8 @@
 Teste,O que muda,Quando permite um plano,Maior margem prevista no teste (R$)
-Todas as regras mantidas,Nenhuma alteração,Não existe solução,
-Máximo semanal ampliado,"Até 321,75 kg e retirada do máximo",Não existe solução; o mínimo é mantido,
+Todas as restrições mantidas,Nenhuma alteração,Não existe solução,
+Máximo semanal ampliado,"Até 321,75 kg (limite da busca: 95% acima da meta) e retirada do máximo",Não existe solução; o mínimo é mantido,
 Mínimo semanal reduzido,"De 115,5 kg até a retirada do mínimo","Permite plano a partir de um mínimo de 76,987 kg ou menor",33336.93541807088
-Primeira mudança ampliada,De R$ 2 até R$ 120/kg,"Permite plano a partir de R$ 44,394/kg",48917.583145057724
-Mudanças entre dias ampliadas,De R$ 2 até R$ 15/kg,Não existe solução na faixa examinada,
+Limite da primeira mudança ampliado,De R$ 2 até R$ 120/kg,"Permite plano a partir de R$ 44,394/kg",48917.583145057724
+Limite entre dias ampliado,De R$ 2 até R$ 15/kg,Não existe solução na faixa examinada,
 Somente extrapolação permitida,Faixa de cálculo de R$ 800 a R$ 2.000/kg,Não existe solução com essas regras,
-Referência teórica livre,"Todas as regras operacionais retiradas, com extrapolação","Preço ótimo de aproximadamente R$ 1.182,11/kg",50432.89380835936
+Ótimo irrestrito,"Todas as restrições operacionais retiradas, com extrapolação","Preço ótimo de aproximadamente R$ 1.182,11/kg",50432.89380835936

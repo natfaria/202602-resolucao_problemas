@@ -6,7 +6,7 @@
   "holdout_file": "data/interim/minerva_holdout.csv",
   "holdout_file_sha256": "000fa916288320679190506a16272b26c2218cc29431bea4ca3ce6fc734d66c2",
   "frozen_plans_file": "data/processed/minerva_otimizacao_resultado.json",
-  "frozen_plans_file_sha256": "c8b25f6a74af0ca041566dba548a8bd7105f423129307caa8f46755f748750f4",
+  "frozen_plans_file_sha256": "1aff34fb98f9b6571c75819811f10d0e0b74ce4ff44358862f17f065bfbd1e09",
   "daily": [
     {
       "data": "2025-11-03T00:00:00",
