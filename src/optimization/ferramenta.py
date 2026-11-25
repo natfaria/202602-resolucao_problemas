@@ -39,6 +39,17 @@ STATUS_TEXTO = {
 }
 
 
+def rotulos_dias(dias_semana: Sequence[str], semanas: Sequence[str]) -> list[str]:
+    """Nomeia cada decisão pelo dia da semana e pela semana do horizonte, sem data de calendário.
+
+    Exemplo: ("Segunda", "semana_1") vira "Segunda-feira 1".
+    """
+    return [
+        f"{dia}-feira {semana.split('_')[-1]}"
+        for dia, semana in zip(dias_semana, semanas, strict=True)
+    ]
+
+
 def cenario_da_ferramenta(relaxadas: frozenset[str]) -> Scenario:
     """Converte as regras marcadas como relaxadas em um cenário do solver."""
     desconhecidas = set(relaxadas) - set(REGRAS_RELAXAVEIS)
@@ -140,7 +151,7 @@ def restricoes_da_solucao(problem: PriceProblem, resultado: dict[str, Any]) -> p
     semanal = resultado["semanal"]
     precos = diario["preco_kg"].to_numpy(float)
     variacao = diario["variacao_preco_rs"].to_numpy(float)
-    dias = diario["data"].dt.strftime("%d/%m").to_numpy()
+    dias = np.array(rotulos_dias(diario["dia_semana"], diario["semana"]))
     semanas = semanal["semana"].str.replace("_", " ").to_numpy()
     margem_base = float(resultado["margem_total_rs"])
 

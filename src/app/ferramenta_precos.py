@@ -20,6 +20,7 @@ from src.optimization.ferramenta import (
     planejar,
     problema_da_ferramenta,
     restricoes_da_solucao,
+    rotulos_dias,
 )
 from src.optimization.planning_inputs import load_planning_inputs
 
@@ -79,14 +80,13 @@ def rotulo_restricao_principal(restricao):
     )
 
 
-def rodape_originais(base, payload):
+def rodape_originais(base):
     """Valores fixos das entradas originais; não mudam com os campos do formulário."""
     suporte = base.artifact["price_support"]
-    data_corte = pd.Timestamp(payload["decision_cutoff"]).strftime("%d/%m/%Y")
     faixa_seg_qui = suporte["Segunda_a_Quinta"]
     faixa_sexta = suporte["Sexta"]
     itens = [
-        f"Preço anterior: <b>{formatar_real(base.initial_price)}/kg</b> ({data_corte})",
+        f"Preço anterior: <b>{formatar_real(base.initial_price)}/kg</b> (último dia de treino)",
         f"Limite entre dias: <b>{formatar_real(base.daily_variation)}/kg</b>",
         f"Meta semanal: <b>{next(iter(base.targets.values())):.0f} kg</b>",
         f"Tolerância: <b>−{formatar_percentual(base.tol_lower)} / +{formatar_percentual(base.tol_upper)}</b>",
@@ -98,7 +98,7 @@ def rodape_originais(base, payload):
 
 
 def desenhar_graficos(diario, semanal, valor_anterior):
-    rotulos = diario["data"].dt.strftime("%d/%m")
+    rotulos = rotulos_dias(diario["dia_semana"], diario["semana"])
     x = range(len(diario))
     fig, eixos = plt.subplots(2, 2, figsize=(9, 6.2))
 
@@ -145,7 +145,7 @@ base, payload = carregar_entradas()
 meta_padrao = float(next(iter(base.targets.values())))
 
 st.markdown(ESTILO, unsafe_allow_html=True)
-st.markdown(rodape_originais(base, payload), unsafe_allow_html=True)
+st.markdown(rodape_originais(base), unsafe_allow_html=True)
 
 coluna_logo, coluna_titulo = st.columns([1, 5], vertical_alignment="center")
 coluna_logo.image(str(ROOT / "src/app/assets/minerva_foods_logo.png"), width=200)
@@ -216,14 +216,14 @@ with st.form("entradas"):
         tabela_custos = st.data_editor(
             pd.DataFrame(
                 {
-                    "Data": [data.strftime("%d/%m/%Y") for data in base.dates],
+                    "Dia": rotulos_dias(base.weekdays, base.weeks),
                     "Custo (R$/kg)": [float(valor) for valor in base.costs],
                 }
             ),
             column_config={
                 "Custo (R$/kg)": st.column_config.NumberColumn(min_value=0.01, format="%.2f"),
             },
-            disabled=["Data"],
+            disabled=["Dia"],
             hide_index=True,
             key="custos_por_dia",
         )
@@ -334,9 +334,7 @@ st.dataframe(
 
 tabela = pd.DataFrame(
     {
-        "Data": diario["data"].dt.strftime("%d/%m/%Y"),
-        "Dia": diario["dia_semana"],
-        "Semana": diario["semana"].str.replace("_", " "),
+        "Dia": rotulos_dias(diario["dia_semana"], diario["semana"]),
         "Preço (R$/kg)": diario["preco_kg"].round(2),
         "Mudança (R$/kg)": diario["variacao_preco_rs"].round(2),
         "Volume previsto (kg)": diario["volume_previsto_kg"].round(2),

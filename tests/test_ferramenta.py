@@ -11,6 +11,7 @@ from src.optimization.ferramenta import (
     planejar,
     problema_da_ferramenta,
     restricoes_da_solucao,
+    rotulos_dias,
 )
 from src.optimization.planning_inputs import load_planning_inputs
 
@@ -102,3 +103,8 @@ def test_restricao_mais_forte_no_caso_com_plano(base):
     assert (
         ativas["ganho_ao_relaxar_rs"].max() == ativas.loc["maximo_semanal", "ganho_ao_relaxar_rs"]
     )
+
+
+def test_rotulos_dias_usam_dia_da_semana_e_semana_sem_datas():
+    rotulos = rotulos_dias(["Segunda", "Terça", "Sexta"], ["semana_1", "semana_1", "semana_2"])
+    assert rotulos == ["Segunda-feira 1", "Terça-feira 1", "Sexta-feira 2"]

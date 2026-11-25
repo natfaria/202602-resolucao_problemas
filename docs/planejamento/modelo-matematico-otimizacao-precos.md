@@ -27,7 +27,7 @@ Os identificadores congelados são:
 | Dias | Dez dias úteis, de 03/11 a 14/11/2025 |
 | Semanas | 03 a 07/11 e 10 a 14/11, verificadas separadamente |
 | Preço anterior observado | R$ 1.318,919594425694/kg, reconstruído em 31/10/2025 |
-| Custo unitário | R$ 1.010,4468382320078/kg, calculado em 31/10/2025 |
+| Custo unitário | R$ 1.010,4468382320078/kg em todos os dias da instância, calculado em 31/10/2025 |
 | Imposto | 7% sobre a receita, como hipótese explícita |
 | Meta por semana | 165 kg |
 | Tolerância principal | 30% abaixo e acima da meta: 115,5 a 214,5 kg |
@@ -35,7 +35,9 @@ Os identificadores congelados são:
 | Variação interna | Até R$ 2/kg entre decisões consecutivas, quando ativa |
 | Limite da primeira mudança | Até R$ 2/kg entre o preço anterior e a primeira decisão, quando ativa |
 
-O custo usado em todos os dias planejados é **o custo unitário do último dia de treino**:
+O custo unitário da instância é **o custo unitário do último dia de treino**, igual nos dez dias:
+$c_t=c$. A formulação aceita um custo $c_t$ por dia, mas a Minerva informa um custo fixo, e é esse
+valor que a instância usa:
 
 $$
 c=\frac{\text{custo realizado em 31/10}}{\text{volume realizado em 31/10}}
@@ -54,7 +56,7 @@ portanto, a alíquota de 7% é uma premissa econômica, não uma medida reconstr
 - $W=\{1,2\}$ contém as semanas; $T_1=\{1,\ldots,5\}$ e $T_2=\{6,\ldots,10\}$.
 - $c(t)$ identifica o contexto do dia: segunda a quinta ou sexta.
 - $p^0$ é o preço anterior observado ou o valor hipotético declarado no cenário.
-- $c$ é o custo unitário constante; $\tau=0{,}07$ é a alíquota sobre receita.
+- $c_t$ é o custo unitário do dia $t$; na instância, $c_t=c$ para todo $t$. $\tau=0{,}07$ é a alíquota sobre receita.
 - $L_w$ e $U_w$ são os limites semanais obtidos da meta e tolerância.
 - $\Delta=2$ limita as mudanças internas; $\Delta_0=2$ limita a primeira mudança.
 - $[\underline p_{c(t)},\overline p_{c(t)}]$ é o faixa de preços observada no treino do contexto.
@@ -103,7 +105,7 @@ A normalização não altera as previsões.
 
 $$
 \max_{p,q}\quad \sum_{t\in T}g_t
-=\sum_{t\in T}\big[(1-\tau)p_t-c\big]q_t
+=\sum_{t\in T}\big[(1-\tau)p_t-c_t\big]q_t
 $$
 
 sujeito a:
@@ -176,7 +178,7 @@ r_t=(1-\tau)1300d_t^{ref}
 \left(\frac{q_t}{d_t^{ref}}\right)^\rho.
 $$
 
-O objetivo é $\max\sum_t(r_t-cq_t)$. Receita e custo são escalados por mil durante a resolução e
+O objetivo é $\max\sum_t(r_t-c_tq_t)$. Receita e custo são escalados por mil durante a resolução e
 retornam a reais nas saídas. A receita é côncava em volume, mas o conjunto completo de relações e
 restrições de preço não é declarado convexo. As expressões não lineares são resolvidas pelo
 Gurobi com limitantes globais e tolerância numérica explícita.
@@ -201,7 +203,7 @@ O código combina esses limites com os limites de preço e volume já conhecidos
    de resposta causal à mudança de preço.
 3. O volume previsto pode ser integralmente atendido. Estoque, capacidade, validade e ruptura são
    assumidos não limitantes porque não há dados para representá-los.
-4. O custo unitário do último dia de treino é mantido nos dez dias; custos fixos não entram no objetivo.
+4. Na instância, o custo unitário é o do último dia de treino e vale nos dez dias ($c_t=c$). Custos fixos não entram no objetivo.
 5. O imposto de 7% é constante e incide sobre a receita.
 6. Não há efeito do preço de um dia sobre a demanda futura, nem efeitos cruzados entre produtos.
 7. Os preços são contínuos; uma regra comercial de centavos exige incorporá-la ao modelo e
