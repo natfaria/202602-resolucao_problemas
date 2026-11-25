@@ -396,6 +396,10 @@ with aba_planejamento:
                 },
             )
 
+    if resultado["diario"] is None and not resultado["diagnostico"]:
+        st.error(f"{resultado['status_texto']}. {resultado['motivo']}")
+        st.stop()
+
     if resultado["diario"] is None:
         st.error(f"{resultado['status_texto']}. Maior volume alcançável por semana, abaixo.")
         diagnostico = (

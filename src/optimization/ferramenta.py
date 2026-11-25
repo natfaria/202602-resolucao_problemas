@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from src.optimization.gurobi_solver import Scenario, solve_scenario
-from src.optimization.price_schedule import PriceProblem, diagnose_feasibility
+from src.optimization.price_schedule import PriceProblem, diagnose_feasibility, price_bounds
 
 TOLERANCIA_ATIVA = 1e-3
 
@@ -120,9 +120,12 @@ def planejar(
         "diario": resultado["daily"],
         "semanal": resultado["weekly"],
         "diagnostico": None,
+        "motivo": None,
     }
     if resultado["status"] == "infeasible":
         saida["diagnostico"] = _diagnostico(problem, cenario)
+        if not saida["diagnostico"]:
+            saida["motivo"] = _motivo_sem_caminho(problem, cenario)
     return saida
 
 
@@ -134,6 +137,38 @@ def _diagnostico(problem: PriceProblem, cenario: Scenario) -> Any:
         daily_delta=problem.daily_variation if cenario.enforce_daily_variation else None,
     )
     return diagnostico["weeks"]
+
+
+def _reais(valor: float) -> str:
+    return f"R$ {valor:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+
+
+def _motivo_sem_caminho(problem: PriceProblem, cenario: Scenario) -> str:
+    """Explica por que nenhuma sequência de preços respeita as regras de variação.
+
+    Quando o primeiro dia já não alcança a faixa observada, a causa é o limite da primeira
+    mudança. Caso contrário, a causa são os limites entre dias consecutivos.
+    """
+    if cenario.enforce_initial_anchor:
+        anterior = problem.initial_price
+        variacao = problem.init_var
+        minimo, maximo = price_bounds(problem)[0]
+        if anterior + variacao < minimo:
+            return (
+                "O limite de variação do primeiro valor impede que o preço do primeiro dia alcance "
+                f"a faixa de preços observada: no máximo chega a {_reais(anterior + variacao)}/kg, "
+                f"e a faixa começa em {_reais(minimo)}/kg."
+            )
+        if anterior - variacao > maximo:
+            return (
+                "O limite de variação do primeiro valor impede que o preço do primeiro dia alcance "
+                f"a faixa de preços observada: no mínimo fica em {_reais(anterior - variacao)}/kg, "
+                f"e a faixa termina em {_reais(maximo)}/kg."
+            )
+    return (
+        "Os limites de variação de preço entre dias consecutivos impedem qualquer sequência "
+        "de preços que permaneça dentro da faixa observada."
+    )
 
 
 def restricoes_da_solucao(problem: PriceProblem, resultado: dict[str, Any]) -> pd.DataFrame:
