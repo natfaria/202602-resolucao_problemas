@@ -167,20 +167,10 @@ class RelaxationStudy:
         *,
         time_limit: float = 30,
         mip_gap: float = 1e-6,
-        daily_variation_ceiling: float | None = None,
-        initial_transition_ceiling: float | None = None,
     ):
         self.problem = problem
         self.time_limit = time_limit
         self.mip_gap = mip_gap
-        self.daily_variation_ceiling = daily_variation_ceiling
-        self.initial_transition_ceiling = initial_transition_ceiling
-        for value, nominal in [
-            (daily_variation_ceiling, problem.daily_variation),
-            (initial_transition_ceiling, problem.init_var),
-        ]:
-            if value is not None and (not np.isfinite(value) or value < nominal):
-                raise ValueError("O teto comercial deve ser finito e não inferior ao nominal.")
         self.results: dict[tuple, dict[str, Any]] = {}
 
     def evaluate(
@@ -192,18 +182,6 @@ class RelaxationStudy:
         enforce_targets: bool = True,
     ) -> dict[str, Any]:
         relaxation = Relaxation() if relaxation is None else relaxation
-        if self.daily_variation_ceiling is not None and not enforce_variation:
-            raise ValueError("A variação interna não pode ser removida quando há teto comercial.")
-        if self.daily_variation_ceiling is not None and (
-            self.problem.daily_variation * relaxation.daily_variation_factor
-            > self.daily_variation_ceiling + 1e-9
-        ):
-            raise ValueError("A variação interna excede o teto comercial recebido.")
-        if self.initial_transition_ceiling is not None and (
-            self.problem.init_var * relaxation.initial_transition_factor
-            > self.initial_transition_ceiling + 1e-9
-        ):
-            raise ValueError("A primeira mudança excede seu teto comercial recebido.")
         key = (*asdict(relaxation).values(), enforce_initial, enforce_variation, enforce_targets)
         if key not in self.results:
             result = solve(

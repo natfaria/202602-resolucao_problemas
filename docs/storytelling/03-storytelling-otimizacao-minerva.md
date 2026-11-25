@@ -68,8 +68,8 @@ a incompatibilidade. Inviabilidade provada é diferente de terminar a busca sem 
 
 O estudo mantém a curva central, custo unitário de R$ 1.010,45/kg,
 imposto hipotético de 7% e preço anterior de R$ 1.318,92/kg.
-A variação interna tem teto de R$ 15,00/kg; a primeira mudança é
-examinada separadamente. Valores de grade não são aprovação comercial.
+A variação interna não tem teto: a busca vai até R$ 120/kg apenas para localizar o primeiro plano.
+A primeira mudança é examinada separadamente. Valores de grade não são aprovação comercial.
 
 **Tabela R3.2.** Mínimos pelo lado factível da bisseção e ausências de recuperação na faixa
 examinada; fonte: `limiares_viabilidade.csv`. As tolerâncias são frações, não pontos percentuais.

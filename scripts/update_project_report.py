@@ -469,8 +469,8 @@ a incompatibilidade. Inviabilidade provada é diferente de terminar a busca sem 
 
 O estudo mantém a curva central, custo unitário de R$ {number(planning["unit_cost"][0])}/kg,
 imposto hipotético de {number(100 * planning["tax_rate"], 0)}% e preço anterior de R$ {number(planning["initial_price"])}/kg.
-A variação interna tem teto de R$ {number(limits["daily_variation_ceiling"])}/kg; a primeira mudança é
-examinada separadamente. Valores de grade não são aprovação comercial.
+A variação interna não tem teto: a busca vai até R$ {number(120)}/kg apenas para localizar o primeiro
+plano. A primeira mudança é examinada separadamente. Valores de grade não são aprovação comercial.
 
 **Tabela R3.2:** Mínimos pelo lado factível da bisseção e ausências de recuperação na faixa
 examinada; fonte: `limiares_viabilidade.csv`. As tolerâncias são frações, não pontos percentuais.

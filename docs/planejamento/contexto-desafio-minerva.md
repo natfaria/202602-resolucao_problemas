@@ -127,7 +127,7 @@ principal é o WMAPE diário: 36,9% em média na validação e 37,2% no holdout.
 2. **Uma regra por vez:**
    - Reduzir o mínimo semanal: há plano a partir de cerca de 76,99 kg.
    - Ampliar a primeira mudança: há plano a partir de cerca de R$ 44,39/kg de limite.
-   - Ampliar as mudanças entre dias até R$ 15/kg: continua inviável.
+   - Ampliar as mudanças entre dias: há plano a partir de cerca de R$ 24,67/kg.
    - Ampliar o máximo semanal: continua inviável, porque o problema é o mínimo.
    - Permitir só extrapolação da faixa de preço: continua inviável.
 3. **Plano selecionado** (sem limite na primeira mudança; demais regras mantidas):
@@ -153,8 +153,8 @@ principal é o WMAPE diário: 36,9% em média na validação e 37,2% no holdout.
 2. **Links da documentação corrigidos.** Os storytelling usam os nomes `01-`, `02-` e `03-`, e
    `mkdocs build --strict` volta a passar.
 3. **O plano selecionado depende de uma regra não original.** Ele começa com um salto de
-   R$ 109,81/kg, que viola a regra de variação máxima. O teto de R$ 120/kg para a primeira mudança foi
-   definido no notebook; o `models/otimizacao/limites_flexibilizacoes.json` deixa esse teto nulo.
+   R$ 109,81/kg, que viola a regra de variação máxima. O alcance de busca de R$ 120/kg para a primeira
+   mudança foi definido no notebook; o `models/otimizacao/limites_flexibilizacoes.json` não define teto.
 4. **A elasticidade é alta e depende de um trecho do histórico.** O `β` estimado é −12,36. O exemplo
    do enunciado (2% de preço gera 5% de volume) corresponde a cerca de −2,5. Segundo a EDA, o período
    de 7 a 16/10 concentra volumes altos com preços baixos. O preço de R$ 1.209 está nessa região:

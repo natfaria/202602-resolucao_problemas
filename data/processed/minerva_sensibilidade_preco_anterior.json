@@ -21,7 +21,20 @@
       "plano_verificado": false
     },
     {
-      "preco_anterior_kg": 1205.0,
+      "preco_anterior_kg": 1202.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1204.0,
       "historico": false,
       "variacao_interna_rs": 2.0,
       "primeira_mudanca_rs": 2.0,
@@ -30,7 +43,33 @@
       "extrapolacao": false,
       "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
       "status": "optimal",
-      "margem_prevista_rs": 48916.0907893458,
+      "margem_prevista_rs": 48912.89084855462,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1206.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 48917.224599373956,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1208.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 48917.583145057724,
       "plano_verificado": true
     },
     {
@@ -47,7 +86,7 @@
       "plano_verificado": true
     },
     {
-      "preco_anterior_kg": 1215.0,
+      "preco_anterior_kg": 1212.0,
       "historico": false,
       "variacao_interna_rs": 2.0,
       "primeira_mudanca_rs": 2.0,
@@ -56,7 +95,46 @@
       "extrapolacao": false,
       "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
       "status": "optimal",
-      "margem_prevista_rs": 48874.15773715953,
+      "margem_prevista_rs": 48917.35803787154,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1214.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 48914.038821352384,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1216.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 48825.031688365096,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1218.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 48723.28469433646,
       "plano_verificado": true
     },
     {
@@ -73,7 +151,7 @@
       "plano_verificado": true
     },
     {
-      "preco_anterior_kg": 1225.0,
+      "preco_anterior_kg": 1222.0,
       "historico": false,
       "variacao_interna_rs": 2.0,
       "primeira_mudanca_rs": 2.0,
@@ -82,7 +160,46 @@
       "extrapolacao": false,
       "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
       "status": "optimal",
-      "margem_prevista_rs": 48268.25866451071,
+      "margem_prevista_rs": 48494.830213430985,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1224.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 48370.28532077967,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1226.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 48156.003782283544,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1228.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 47925.16175249068,
       "plano_verificado": true
     },
     {
@@ -99,7 +216,7 @@
       "plano_verificado": true
     },
     {
-      "preco_anterior_kg": 1235.0,
+      "preco_anterior_kg": 1232.0,
       "historico": false,
       "variacao_interna_rs": 2.0,
       "primeira_mudanca_rs": 2.0,
@@ -108,7 +225,46 @@
       "extrapolacao": false,
       "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
       "status": "optimal",
-      "margem_prevista_rs": 47034.73668604707,
+      "margem_prevista_rs": 47428.15027840173,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1234.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 47167.652075088015,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1236.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 46900.11414264432,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1238.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 46625.95269170769,
       "plano_verificado": true
     },
     {
@@ -125,7 +281,7 @@
       "plano_verificado": true
     },
     {
-      "preco_anterior_kg": 1245.0,
+      "preco_anterior_kg": 1242.0,
       "historico": false,
       "variacao_interna_rs": 2.0,
       "primeira_mudanca_rs": 2.0,
@@ -134,7 +290,46 @@
       "extrapolacao": false,
       "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
       "status": "optimal",
-      "margem_prevista_rs": 45619.873041913386,
+      "margem_prevista_rs": 46059.34582789428,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1244.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 45767.656192126655,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1246.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 45470.8556201195,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1248.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 45169.28676366182,
       "plano_verificado": true
     },
     {
@@ -151,7 +346,7 @@
       "plano_verificado": true
     },
     {
-      "preco_anterior_kg": 1255.0,
+      "preco_anterior_kg": 1252.0,
       "historico": false,
       "variacao_interna_rs": 2.0,
       "primeira_mudanca_rs": 2.0,
@@ -160,7 +355,46 @@
       "extrapolacao": false,
       "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
       "status": "optimal",
-      "margem_prevista_rs": 44080.887502386155,
+      "margem_prevista_rs": 44553.14911596881,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1254.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 44239.201292272235,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1256.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 43921.727985663,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1258.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 43601.010112291544,
       "plano_verificado": true
     },
     {
@@ -177,7 +411,7 @@
       "plano_verificado": true
     },
     {
-      "preco_anterior_kg": 1265.0,
+      "preco_anterior_kg": 1262.0,
       "historico": false,
       "variacao_interna_rs": 2.0,
       "primeira_mudanca_rs": 2.0,
@@ -186,7 +420,46 @@
       "extrapolacao": false,
       "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
       "status": "optimal",
-      "margem_prevista_rs": 42456.746437691254,
+      "margem_prevista_rs": 42950.90922787333,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1264.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 42622.03408727881,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1266.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 42290.93085124117,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1268.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 41957.8286661677,
       "plano_verificado": true
     },
     {
@@ -203,7 +476,7 @@
       "plano_verificado": true
     },
     {
-      "preco_anterior_kg": 1275.0,
+      "preco_anterior_kg": 1272.0,
       "historico": false,
       "variacao_interna_rs": 2.0,
       "primeira_mudanca_rs": 2.0,
@@ -212,8 +485,47 @@
       "extrapolacao": false,
       "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
       "status": "optimal",
-      "margem_prevista_rs": 40779.32317141516,
+      "margem_prevista_rs": 41286.49785706647,
       "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1274.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 40948.6823095863,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1276.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "optimal",
+      "margem_prevista_rs": 40609.69458193649,
+      "plano_verificado": true
+    },
+    {
+      "preco_anterior_kg": 1278.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
     },
     {
       "preco_anterior_kg": 1280.0,
@@ -229,7 +541,46 @@
       "plano_verificado": false
     },
     {
-      "preco_anterior_kg": 1285.0,
+      "preco_anterior_kg": 1282.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1284.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1286.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1288.0,
       "historico": false,
       "variacao_interna_rs": 2.0,
       "primeira_mudanca_rs": 2.0,
@@ -255,7 +606,46 @@
       "plano_verificado": false
     },
     {
-      "preco_anterior_kg": 1295.0,
+      "preco_anterior_kg": 1292.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1294.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1296.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1298.0,
       "historico": false,
       "variacao_interna_rs": 2.0,
       "primeira_mudanca_rs": 2.0,
@@ -281,7 +671,46 @@
       "plano_verificado": false
     },
     {
-      "preco_anterior_kg": 1305.0,
+      "preco_anterior_kg": 1302.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1304.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1306.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1308.0,
       "historico": false,
       "variacao_interna_rs": 2.0,
       "primeira_mudanca_rs": 2.0,
@@ -307,7 +736,46 @@
       "plano_verificado": false
     },
     {
-      "preco_anterior_kg": 1315.0,
+      "preco_anterior_kg": 1312.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1314.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1316.0,
+      "historico": false,
+      "variacao_interna_rs": 2.0,
+      "primeira_mudanca_rs": 2.0,
+      "minimo_semanal_kg": 115.49999999999999,
+      "maximo_semanal_kg": 214.5,
+      "extrapolacao": false,
+      "model_core_sha256": "d5b658c7654bee68f0cd706d7a75b846c0a41d9fe542e66f326a80fb6daa0385",
+      "status": "infeasible",
+      "margem_prevista_rs": null,
+      "plano_verificado": false
+    },
+    {
+      "preco_anterior_kg": 1318.0,
       "historico": false,
       "variacao_interna_rs": 2.0,
       "primeira_mudanca_rs": 2.0,

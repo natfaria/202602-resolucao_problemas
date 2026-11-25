@@ -19,18 +19,16 @@ custo, imposto, preço anterior, regras e calendário. A curva é lida do caminh
 precisão integral. Se uma fonte mudar, as entradas precisam ser geradas novamente. Não há cópia de
 coeficientes entre notebooks nem dependência de variáveis mantidas em memória.
 
-## Limites comerciais recebidos
+## Alcances das buscas
 
-O estudo recebe `models/otimizacao/limites_flexibilizacoes.json`. O teto para mudanças entre
-as decisões do horizonte é R$ 15/kg. Ele não se aplica à primeira mudança em relação ao preço
-anterior, que continua sendo examinada separadamente nas faixas declaradas da análise.
-A regra de referência da instância permanece R$ 2/kg; R$ 15/kg é o teto da flexibilização admitida.
+O estudo recebe `models/otimizacao/limites_flexibilizacoes.json`, que não define teto para as
+mudanças. As regras de referência da instância permanecem: R$ 2/kg entre dias e R$ 2/kg na primeira
+mudança. As buscas de mínimos usam alcances numéricos declarados (por exemplo, até R$ 120/kg), apenas
+para localizar o primeiro plano viável. Esses alcances não são limites do problema.
 
-Buscas de mínimos, curvas, grades e alternativas ficam dentro desse teto. Se uma regra não
-recuperar a viabilidade dentro da faixa permitida, o resultado é registrado sem plano ou margem.
-A referência financeira também é escolhida somente entre recuperações mínimas admissíveis.
-O limite é aplicado na entrada de cada resolução, evitando que uma grade introduza casos acima
-do teto. As comparações com regras removidas permanecem referências teóricas separadas.
+Se uma regra não recuperar a viabilidade dentro do alcance da busca, o resultado é registrado sem plano
+ou margem. A referência financeira é escolhida somente entre recuperações mínimas admissíveis. As
+comparações com regras removidas permanecem referências teóricas separadas.
 
 ## Regras examinadas
 

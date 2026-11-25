@@ -29,12 +29,7 @@ def problem():
 
 @pytest.fixture(scope="module")
 def study(problem):
-    limits = load_relaxation_limits(ROOT / "models/otimizacao/limites_flexibilizacoes.json")
-    return RelaxationStudy(
-        problem,
-        daily_variation_ceiling=limits["daily_variation_ceiling"],
-        initial_transition_ceiling=limits["initial_transition_ceiling"],
-    )
+    return RelaxationStudy(problem)
 
 
 def test_relaxing_internal_changes_preserves_initial_anchor(problem):
@@ -91,23 +86,14 @@ def test_minimum_is_bracketed_by_infeasibility_and_a_verified_plan(study, rule, 
     assert not above["daily"]["extrapolado"].any()
 
 
-def test_daily_variation_alone_does_not_recover_within_the_received_ceiling(study):
-    threshold = study.minimum("daily_variation", upper=study.daily_variation_ceiling)
-    assert threshold["status"] == "no_recovery_in_range"
-    assert threshold["minimum"] is None
-    assert threshold["infeasible_value"] == 15
+def test_daily_variation_alone_recovers_above_a_search_threshold(study):
+    threshold = study.minimum("daily_variation", upper=120.0)
+    assert threshold["status"] == "bracketed"
+    assert 20 < threshold["minimum"] < 30
+    assert threshold["infeasible_value"] < threshold["minimum"] <= threshold["feasible_value"]
 
 
-def test_commercial_ceiling_is_enforced_before_solving(study):
-    count = len(study.results)
-    with pytest.raises(ValueError, match="variação interna excede"):
-        study.evaluate(Relaxation(daily_variation_factor=8))
-    with pytest.raises(ValueError, match="não pode ser removida"):
-        study.evaluate(enforce_variation=False)
-    assert len(study.results) == count
-
-
-def test_initial_transition_is_not_subject_to_the_internal_ceiling(study):
+def test_initial_transition_is_independent_of_daily_variation(study):
     result = study.evaluate(Relaxation(initial_transition_factor=30, daily_variation_factor=7.5))
     assert result["parameters"]["initial_variation"] == 60
     assert result["parameters"]["daily_variation"] == 15
@@ -208,13 +194,7 @@ def test_saved_partial_grid_covers_all_four_families_and_selects_better_margins(
         assert grid.loc[grid["n_familias_flexibilizadas"] == number, "plano_verificado"].any()
     assert grid["tolerancia_inferior"].nunique() > 1
     assert grid["tolerancia_superior"].nunique() > 1
-    assert (
-        grid["variacao_interna_rs"]
-        .le(payload["relaxation_limits"]["daily_variation_ceiling"])
-        .all()
-    )
-    assert payload["relaxation_limits"]["initial_transition_ceiling"] is None
-    alternatives = pd.DataFrame(payload["alternatives"])
+       alternatives = pd.DataFrame(payload["alternatives"])
     assert alternatives["dominancia_financeira"].eq("eficiente").all()
     assert alternatives["diferenca_referencia_factivel_rs"].gt(0.10).all()
     assert alternatives["n_familias_flexibilizadas"].ge(2).all()
@@ -282,9 +262,6 @@ def test_saved_intro_curves_change_only_the_named_rule(problem):
         assert not row["extrapolacao"]
         assert row["preco_anterior_kg"] == problem.initial_price
         assert row["model_core_sha256"] == payload["model_core_sha256"]
-        assert (
-            row["variacao_interna_rs"] <= payload["relaxation_limits"]["daily_variation_ceiling"]
-        )
         if not row["minimo_semanal_ativo"]:
             assert row["regra"] == "tolerance_lower" and row["minimo_semanal_kg"] == 0
         if not row["maximo_semanal_ativo"]:

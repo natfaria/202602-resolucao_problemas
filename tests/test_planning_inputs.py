@@ -18,25 +18,17 @@ ROOT = Path(__file__).resolve().parents[1]
 INPUT = ROOT / "models/otimizacao/entradas_planejamento.json"
 
 
-def test_received_limits_apply_to_internal_changes_only():
+def test_relaxation_artifact_declares_no_ceiling():
     limits = load_relaxation_limits(ROOT / "models/otimizacao/limites_flexibilizacoes.json")
-    assert limits["daily_variation_ceiling"] == 15
-    assert limits["initial_transition_ceiling"] is None
+    assert limits["artifact_version"] == 1
+    assert "daily_variation_ceiling" not in limits
+    assert "initial_transition_ceiling" not in limits
 
 
-@pytest.mark.parametrize("value", [0, -1, float("inf"), None])
-def test_invalid_relaxation_limit_is_rejected(tmp_path, value):
+def test_unsupported_relaxation_artifact_version_is_rejected(tmp_path):
     path = tmp_path / "limits.json"
-    path.write_text(
-        json.dumps(
-            {
-                "artifact_version": 1,
-                "daily_variation_ceiling": value,
-                "initial_transition_ceiling": None,
-            }
-        )
-    )
-    with pytest.raises(ValueError, match="positivo e finito"):
+    path.write_text(json.dumps({"artifact_version": 2}))
+    with pytest.raises(ValueError, match="Versão não suportada"):
         load_relaxation_limits(path)
 
 
