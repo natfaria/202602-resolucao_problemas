@@ -1,4 +1,4 @@
-Referência,Volume total (kg),Margem semana 1 (R$),Margem semana 2 (R$),Margem total (R$),Diferença para o otimizado (R$)
-Otimizado: preços e volumes previstos pela curva,428.99999999999807,24458.79157252886,24458.79157252886,48917.583145057724,0.0
-Curva no preço praticado: volumes previstos nos preços reais,149.5684735273079,15655.480892239859,16187.149793807308,31842.630686047163,-17074.95245901056
-Realizado: preços praticados e volumes registrados,183.62853278348555,16676.239742315025,23000.96124068535,39677.20098300038,-9240.382162057344
+Referência,Volume total (kg),Margem semana 1 (R$),Margem semana 2 (R$),Margem total (R$),Diferença para o otimizado (R$),Ganho do otimizado (%)
+Otimizado: preços e volumes previstos pela curva,428.99999999999807,24458.79157252886,24458.79157252886,48917.583145057724,0.0,-
+Curva no preço praticado: volumes previstos nos preços reais,149.5684735273079,15655.480892239859,16187.149793807308,31842.630686047163,-17074.95245901056,53.6
+Realizado: preços praticados e volumes registrados,183.62853278348555,16676.239742315025,23000.96124068535,39677.20098300038,-9240.382162057344,23.3
