@@ -5,9 +5,9 @@ docs_dir: .
 site_dir: ../site
 hooks:
   - hooks.py
+
 exclude_docs: |
   /site/
-  /README.md
 
 markdown_extensions:
   - pymdownx.arithmatex:
@@ -17,14 +17,10 @@ extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 nav:
-  - Início: planejamento/index.md
-  - Contexto do desafio: planejamento/contexto-desafio-minerva.md
-  - Primeiros passos: planejamento/getting-started.md
-  - Etapas e contratos: planejamento/plano-acao-tres-notebooks.md
-  - Modelo matemático: planejamento/modelo-matematico-otimizacao-precos.md
-  - Otimização de referência: planejamento/plano-otimizador-margem.md
-  - Flexibilizações: planejamento/plano-simulacao-relaxacoes.md
-  - Exploração dos dados: storytelling/01-storytelling-eda-minerva.md
+  - Início: index.md
+  - Contexto do desafio: contexto-desafio-minerva.md
+  - Modelo matemático: modelo-matematico-otimizacao-precos.md
+  - Storytelling da exploração: storytelling/01-storytelling-eda-minerva.md
   - Storytelling da curva de demanda: storytelling/02-curva-de-demanda-modelo.md
   - Storytelling da otimização: storytelling/03-storytelling-otimizacao-minerva.md
   - Referências: referencias-bibliograficas.md

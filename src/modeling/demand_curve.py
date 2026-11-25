@@ -1,4 +1,4 @@
-"""Inferência da curva de demanda congelada pelo Notebook 2."""
+"""Inferência da curva de demanda publicada pelo notebook 2.0."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from typing import Any
 import numpy as np
 
 Artifact = Mapping[str, Any]
+ARTIFACT_VERSION = 2
 
 
 def load_artifact(path: str | Path) -> dict[str, Any]:
@@ -40,7 +41,10 @@ def file_sha256(path: str | Path) -> str:
 def model_core(artifact: Artifact) -> dict[str, Any]:
     """Seleciona os campos que determinam as previsões da curva."""
     version = int(artifact["artifact_version"])
-    common = {
+    if version != ARTIFACT_VERSION:
+        raise ValueError(f"Versão de artefato não suportada: {version!r}")
+    return {
+        "artifact_version": version,
         "model_id": artifact["model_id"],
         "family": artifact["family"],
         "calendar": artifact["calendar"],
@@ -49,21 +53,6 @@ def model_core(artifact: Artifact) -> dict[str, Any]:
         "smearing_factor": artifact["smearing_factor"],
         "price_support": artifact["price_support"],
     }
-    if version == 1:
-        # O Notebook 2.1 congelou a versão 1 antes da criação deste leitor. Seu
-        # contrato inclui a fórmula, mas não a própria versão, no núcleo.
-        remaining = {
-            key: value for key, value in common.items() if key not in {"model_id", "family"}
-        }
-        return {
-            "model_id": common["model_id"],
-            "family": common["family"],
-            "formula": artifact["formula"],
-            **remaining,
-        }
-    if version == 2:
-        return {"artifact_version": version, **common}
-    raise ValueError(f"Versão de artefato não suportada: {version!r}")
 
 
 def model_core_sha256(artifact: Artifact) -> str:
@@ -93,10 +82,8 @@ def validate_artifact(artifact: Artifact) -> None:
     if missing:
         raise ValueError(f"Artefato sem campos obrigatórios: {sorted(missing)}")
     version = int(artifact["artifact_version"])
-    if version not in {1, 2}:
+    if version != ARTIFACT_VERSION:
         raise ValueError(f"Versão de artefato não suportada: {version!r}")
-    if version == 1 and "formula" not in artifact:
-        raise ValueError("Artefato v1 sem o campo obrigatório 'formula'.")
     if artifact["family"] not in {"power", "exponential", "linear"}:
         raise ValueError(f"Família não suportada: {artifact['family']!r}")
     if set(artifact["feature_order"]) != set(artifact["coefficients"]):
@@ -104,35 +91,6 @@ def validate_artifact(artifact: Artifact) -> None:
     expected_hash = artifact.get("model_core_sha256")
     if expected_hash and expected_hash != model_core_sha256(artifact):
         raise ValueError("O núcleo preditivo do artefato não corresponde ao hash registrado.")
-
-
-def validate_uncertainty_artifact(artifact: Artifact, uncertainty: Artifact) -> None:
-    """Valida que a incerteza pertence exatamente ao núcleo da curva informada."""
-    validate_artifact(artifact)
-    required = {"artifact_version", "model_core_sha256", "scenario_multipliers"}
-    missing = required - set(uncertainty)
-    if missing:
-        raise ValueError(f"Artefato de incerteza sem campos obrigatórios: {sorted(missing)}")
-    frozen_hash = str(artifact.get("model_core_sha256", model_core_sha256(artifact)))
-    if uncertainty["model_core_sha256"] != frozen_hash:
-        raise ValueError("A incerteza não pertence ao núcleo preditivo da curva informada.")
-    multipliers = uncertainty["scenario_multipliers"]
-    if float(multipliers.get("central", np.nan)) != 1.0:
-        raise ValueError("O multiplicador do cenário central precisa ser igual a 1.")
-    values = np.asarray(list(multipliers.values()), dtype=float)
-    if not values.size or not np.all(np.isfinite(values)) or np.any(values <= 0):
-        raise ValueError("Multiplicadores de cenário precisam ser finitos e positivos.")
-
-
-def load_artifact_bundle(
-    artifact_path: str | Path,
-    uncertainty_path: str | Path,
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Carrega e valida conjuntamente curva e incerteza congeladas."""
-    artifact = load_artifact(artifact_path)
-    uncertainty = load_artifact(uncertainty_path)
-    validate_uncertainty_artifact(artifact, uncertainty)
-    return artifact, uncertainty
 
 
 def validate_training_data(artifact: Artifact, project_root: str | Path) -> Path:
@@ -160,34 +118,18 @@ def context_for_weekday(artifact: Artifact, weekday: str) -> str:
     return str(mapping[weekday])
 
 
-def _scenario_multiplier(scenario: str, uncertainty: Artifact | None) -> float:
-    if scenario == "central":
-        return 1.0
-    if uncertainty is None:
-        raise ValueError("Cenários não centrais exigem o artefato de incerteza.")
-    multipliers = uncertainty["scenario_multipliers"]
-    if scenario not in multipliers:
-        raise ValueError(f"Cenário não reconhecido: {scenario!r}")
-    return float(multipliers[scenario])
-
-
 def predict_volume_from_artifact(
     artifact: Artifact | str | Path,
     price: float,
     weekday: str,
     *,
-    scenario: str = "central",
-    uncertainty: Artifact | str | Path | None = None,
     allow_extrapolation: bool = False,
 ) -> float:
     """Prevê volume em kg e bloqueia extrapolações por padrão."""
-    artifact_data = load_artifact(artifact) if isinstance(artifact, (str, Path)) else dict(artifact)
-    validate_artifact(artifact_data)
-    uncertainty_data = (
-        load_artifact(uncertainty) if isinstance(uncertainty, (str, Path)) else uncertainty
+    artifact_data = (
+        load_artifact(artifact) if isinstance(artifact, (str, Path)) else dict(artifact)
     )
-    if uncertainty_data is not None:
-        validate_uncertainty_artifact(artifact_data, uncertainty_data)
+    validate_artifact(artifact_data)
     if price <= 0:
         raise ValueError("Preço precisa ser estritamente positivo.")
 
@@ -219,7 +161,6 @@ def predict_volume_from_artifact(
         prediction = np.exp(linear_prediction) * float(artifact_data["smearing_factor"])
     else:
         prediction = linear_prediction
-    prediction *= _scenario_multiplier(scenario, uncertainty_data)
     if prediction <= 0:
         raise ValueError("A curva produziu volume não positivo no ponto solicitado.")
     return float(prediction)

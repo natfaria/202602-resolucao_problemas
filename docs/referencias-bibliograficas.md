@@ -12,7 +12,7 @@ as fontes dos resultados calculados. As escolhas de cenários são premissas pr�
    A planilha recebida é `data/raw/instance_desafio_minerva.xlsx`.
 2. PHILLIPS, Robert L. *Pricing and Revenue Optimization*. 2. ed. Stanford: Stanford University
    Press, 2021. cap. 4, especialmente seções 4.2 a 4.4. ISBN 9781503614260, edição digital.
-   [Exemplar de referência recebido](referencias/dokumen.pub_pricing-and-revenue-optimization-second-edition-9781503614260.pdf).
+   O PDF não é distribuído com o repositório.
 3. DUAN, Naihua. Smearing Estimate: A Nonparametric Retransformation Method.
    *Journal of the American Statistical Association*, 78(383), 605–610, 1983.
    [DOI: 10.1080/01621459.1983.10478017](https://doi.org/10.1080/01621459.1983.10478017).

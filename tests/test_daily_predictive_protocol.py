@@ -24,7 +24,7 @@ MODEL = ROOT / "models/preditivo_diario/curva_demanda.json"
 @pytest.fixture(scope="module")
 def protocol():
     """Carrega só funções puras e declarações, sem executar a análise ou ler holdout."""
-    notebook = json.loads((ROOT / "notebooks/2.0.1-minerva-modelo-preditivo.ipynb").read_text())
+    notebook = json.loads((ROOT / "notebooks/2.0-minerva-modelo-preditivo.ipynb").read_text())
     weekdays = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
     namespace = {
         "np": np,

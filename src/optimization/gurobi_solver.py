@@ -154,8 +154,6 @@ def solve_scenario(
                 problem.artifact,
                 reference,
                 d,
-                scenario=problem.scenario,
-                uncertainty=problem.uncertainty,
             )
             for d in problem.weekdays
         ]
@@ -296,8 +294,6 @@ def solve_scenario(
                 problem.artifact,
                 float(price),
                 weekday,
-                scenario=problem.scenario,
-                uncertainty=problem.uncertainty,
                 allow_extrapolation=scenario.extrapolate,
             )
             for price, weekday in zip(prices, problem.weekdays, strict=True)

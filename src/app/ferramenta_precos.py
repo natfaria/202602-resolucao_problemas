@@ -5,8 +5,8 @@ Execução, a partir da raiz do repositório:
     .venv/bin/python -m streamlit run src/app/ferramenta_precos.py
 """
 
-from pathlib import Path
 import json
+from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
+from src.optimization.diagnostico import diagnosticar
 from src.optimization.ferramenta import (
     REGRAS_RELAXAVEIS,
     planejar,
@@ -23,7 +24,6 @@ from src.optimization.ferramenta import (
     restricoes_da_solucao,
     rotulos_dias,
 )
-from src.optimization.diagnostico import diagnosticar
 from src.optimization.planning_inputs import load_planning_inputs
 
 st.set_page_config(
@@ -158,19 +158,19 @@ st.caption(
 )
 
 
-aba_planejamento, aba_livre, aba_sem_extrapolacao, aba_comparacao = st.tabs([
-    "Planejamento", "Ótimo livre (consulta)",
-    "Melhor sem extrapolação (consulta)", "Otimizado e realizado (consulta)",
-])
+aba_planejamento, aba_livre, aba_sem_extrapolacao, aba_comparacao = st.tabs(
+    [
+        "Planejamento",
+        "Ótimo livre (consulta)",
+        "Melhor sem extrapolação (consulta)",
+        "Otimizado e realizado (consulta)",
+    ]
+)
 
 # Abas de consulta.
 
 RESULTADOS = ROOT / "data/processed/minerva_otimizacao_resultado.json"
 TRES_REFERENCIAS = ROOT / "reports/tables/03_tres_referencias_margem.csv"
-
-
-def formatar_real(valor):
-    return f"R$ {valor:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
 
 def formatar_numero(valor, casas=2):
@@ -195,27 +195,32 @@ def mostrar_cenario_fixo(chave, titulo, descricao, aviso=None):
     colunas[1].metric("Volume previsto (kg)", formatar_numero(volume_total, 1))
     colunas[2].metric("Status do solver", cenario["status"])
     diario = pd.DataFrame(cenario["daily"])
-    tabela = pd.DataFrame({
-        "Data": pd.to_datetime(diario["data"]).dt.strftime("%d/%m/%Y"),
-        "Dia": diario["dia_semana"],
-        "Preço (R$/kg)": diario["preco_kg"].round(2),
-        "Volume previsto (kg)": diario["volume_previsto_kg"].round(2),
-        "Margem prevista (R$)": diario["margem_prevista_rs"].round(2),
-        "Fora da faixa observada": diario["extrapolado"],
-    })
+    tabela = pd.DataFrame(
+        {
+            "Data": pd.to_datetime(diario["data"]).dt.strftime("%d/%m/%Y"),
+            "Dia": diario["dia_semana"],
+            "Preço (R$/kg)": diario["preco_kg"].round(2),
+            "Volume previsto (kg)": diario["volume_previsto_kg"].round(2),
+            "Margem prevista (R$)": diario["margem_prevista_rs"].round(2),
+            "Fora da faixa observada": diario["extrapolado"],
+        }
+    )
     st.subheader("Plano diário")
     st.dataframe(tabela, hide_index=True, width="stretch")
     semanal = pd.DataFrame(cenario["weekly"])
     st.subheader("Resumo semanal")
     st.dataframe(
-        pd.DataFrame({
-            "Semana": semanal["semana"].str.replace("_", " "),
-            "Mínimo (kg)": semanal["limite_inferior_kg"].round(2),
-            "Volume previsto (kg)": semanal["volume_previsto_kg"].round(2),
-            "Máximo (kg)": semanal["limite_superior_kg"].round(2),
-            "Margem prevista (R$)": semanal["margem_prevista_rs"].round(2),
-        }),
-        hide_index=True, width="stretch",
+        pd.DataFrame(
+            {
+                "Semana": semanal["semana"].str.replace("_", " "),
+                "Mínimo (kg)": semanal["limite_inferior_kg"].round(2),
+                "Volume previsto (kg)": semanal["volume_previsto_kg"].round(2),
+                "Máximo (kg)": semanal["limite_superior_kg"].round(2),
+                "Margem prevista (R$)": semanal["margem_prevista_rs"].round(2),
+            }
+        ),
+        hide_index=True,
+        width="stretch",
     )
     fig, eixos = plt.subplots(1, 2, figsize=(11, 3.8))
     rotulos = [f"{pd.to_datetime(d):%d/%m}" for d in diario["data"]]
@@ -225,9 +230,10 @@ def mostrar_cenario_fixo(chave, titulo, descricao, aviso=None):
     eixos[1].set(title="Volume previsto por dia", ylabel="kg")
     for eixo in eixos:
         eixo.tick_params(axis="x", rotation=45)
-        eixo.grid(alpha=.2)
+        eixo.grid(alpha=0.2)
     fig.tight_layout()
     st.pyplot(fig)
+
 
 with aba_livre:
     mostrar_cenario_fixo(
@@ -266,7 +272,10 @@ with aba_planejamento:
             format="%.2f",
         )
         variacao_primeira = colunas_entrada[1].number_input(
-            "Limite da primeira mudança (R$/kg)", value=float(base.init_var), min_value=0.0, step=0.5
+            "Limite da primeira mudança (R$/kg)",
+            value=float(base.init_var),
+            min_value=0.0,
+            step=0.5,
         )
         variacao_diaria = colunas_entrada[2].number_input(
             "Limite entre dias consecutivos (R$/kg)",
@@ -299,7 +308,11 @@ with aba_planejamento:
             / 100
         )
         custo_unico = colunas_entrada[2].number_input(
-            "Custo por kg (R$/kg)", value=float(base.costs[0]), min_value=0.01, step=1.0, format="%.2f"
+            "Custo por kg (R$/kg)",
+            value=float(base.costs[0]),
+            min_value=0.01,
+            step=1.0,
+            format="%.2f",
         )
         imposto = (
             colunas_entrada[3].number_input(
@@ -329,7 +342,9 @@ with aba_planejamento:
                 key="custos_por_dia",
             )
         custo = (
-            tabela_custos["Custo (R$/kg)"].astype(float).tolist() if custo_variavel else custo_unico
+            tabela_custos["Custo (R$/kg)"].astype(float).tolist()
+            if custo_variavel
+            else custo_unico
         )
 
         st.markdown(
@@ -369,7 +384,10 @@ with aba_planejamento:
         st.session_state["valor_anterior"] = valor_anterior
     resultado = st.session_state["resultado"]
 
-    with st.expander("Diagnóstico: o que precisa mudar para existir um plano", expanded=resultado["diario"] is None):
+    with st.expander(
+        "Diagnóstico: o que precisa mudar para existir um plano",
+        expanded=resultado["diario"] is None,
+    ):
         st.write(
             "Usa as entradas atuais do formulário. Para cada regra, sozinha, mostra a menor "
             "flexibilização que permite um plano e a margem prevista nesse ponto."
@@ -385,7 +403,9 @@ with aba_planejamento:
             diagnostico_salvo = st.session_state["diagnostico"]
             st.caption(f"Com as regras originais: {diagnostico_salvo['status'].lower()}.")
             if diagnostico_salvo["entradas"] != entradas:
-                st.warning("As entradas mudaram desde o último diagnóstico. Calcule de novo para atualizar.")
+                st.warning(
+                    "As entradas mudaram desde o último diagnóstico. Calcule de novo para atualizar."
+                )
             st.dataframe(
                 diagnostico_salvo["tabela"].round(4),
                 hide_index=True,
@@ -460,7 +480,9 @@ with aba_planejamento:
         hide_index=True,
         width="stretch",
         column_config={
-            "Ganho de margem ao relaxar sozinho (R$)": st.column_config.NumberColumn(format="R$ %.2f"),
+            "Ganho de margem ao relaxar sozinho (R$)": st.column_config.NumberColumn(
+                format="R$ %.2f"
+            ),
         },
     )
 

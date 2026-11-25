@@ -1,9 +1,14 @@
-# Origem e uso das tabelas
+# Tabelas geradas
 
-A trilha atual é identificada pelos quatro notebooks do README. As tabelas preditivas atuais estão em `preditivo_diario/`; as tabelas operacionais produzidas pelo Gurobi terminam em `_gurobi.csv`, além de `03_comparacao_otimizador_teste.csv` e `03_sensibilidade_premissas.csv`. `relaxacoes/` contém os mínimos e as combinações graduais.
+Cada tabela é gravada por um notebook. Os resumos em `docs/storytelling/` leem apenas estas tabelas
+e os artefatos de `models/` e `data/processed/`.
 
-As tabelas exploratórias `01_*` são produzidas pelo notebook de preparação. Foram removidas
-as tabelas de versões anteriores que não fazem parte da trilha atual. O diagnóstico de
-viabilidade está em `data/processed/minerva_diagnostico_infactividade.json`.
+| Origem | Arquivos | Conteúdo |
+|---|---|---|
+| Notebook 1.0 | `01_*` | Faixas de preço e volume, sazonalidade, catálogo de variáveis e de modelos |
+| Notebook 2.0 | `preditivo_diario/` | Validação cruzada, comparação de candidatos, benchmark, coeficientes e holdout |
+| Notebook 3.0 | `03_*` | Caso original, uma regra por vez, preço anterior, tolerância, premissas e holdout |
+| Notebook 3.1 | `relaxacoes/` | Menores flexibilizações, curvas, combinações, alternativas e comparação com o holdout |
 
-O relatório é gerado por `scripts/update_project_report.py` a partir dos artefatos atuais, com verificação de hashes. Uma mudança de premissas exige reexecução das etapas e atualização do relatório.
+O relatório dos resumos é gerado por `scripts/update_project_report.py`, que confere os hashes dos
+artefatos antes de escrever. Uma mudança de premissas exige reexecutar as etapas e atualizar os resumos.

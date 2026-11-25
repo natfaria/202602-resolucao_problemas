@@ -58,8 +58,6 @@ class PriceProblem:
     daily_variation: float
     unit_cost: float | Sequence[float]
     tax_rate: float = 0.07
-    scenario: str = "central"
-    uncertainty: Artifact | None = None
     tolerance_lower: float | None = None
     tolerance_upper: float | None = None
     initial_variation: float | None = None
@@ -69,7 +67,9 @@ class PriceProblem:
         validate_artifact(self.artifact)
         n = len(self.dates)
         if not n or len(self.weekdays) != n or len(self.weeks) != n:
-            raise ValueError("Datas, dias da semana e semanas precisam ter o mesmo tamanho positivo.")
+            raise ValueError(
+                "Datas, dias da semana e semanas precisam ter o mesmo tamanho positivo."
+            )
         if set(self.weeks) != set(self.targets):
             raise ValueError("Cada semana do horizonte precisa ter uma meta.")
         if not 0 <= self.tolerance < 1:
@@ -87,7 +87,9 @@ class PriceProblem:
         if not 0 <= tol_lower < 1 or not 0 <= tol_upper < 1:
             raise ValueError("Tolerâncias separadas precisam estar no intervalo [0, 1).")
         # Validar initial_variation
-        init_var = self.initial_variation if self.initial_variation is not None else self.daily_variation
+        init_var = (
+            self.initial_variation if self.initial_variation is not None else self.daily_variation
+        )
         if init_var < 0:
             raise ValueError("initial_variation não pode ser negativa.")
         # Validar day_rule
@@ -116,7 +118,9 @@ class PriceProblem:
     @property
     def init_var(self) -> float:
         """Retorna variação inicial (padrão = daily_variation quando não especificado)."""
-        return self.initial_variation if self.initial_variation is not None else self.daily_variation
+        return (
+            self.initial_variation if self.initial_variation is not None else self.daily_variation
+        )
 
 
 def build_horizon(start: str | pd.Timestamp = "2025-11-03", periods: int = 10) -> pd.DataFrame:
@@ -141,8 +145,6 @@ def problem_from_frames(
     unit_cost: float | Sequence[float],
     initial_price: float,
     tax_rate: float = 0.07,
-    scenario: str = "central",
-    uncertainty: Artifact | None = None,
 ) -> PriceProblem:
     """Monta o contrato do otimizador usando as restrições lidas da instância."""
     horizon = build_horizon() if horizon is None else horizon.copy()
@@ -156,9 +158,9 @@ def problem_from_frames(
     if missing:
         raise ValueError(f"Tabela de restrições sem colunas: {sorted(missing)}")
     tolerances = restrictions["Tolerância %"].astype(float).unique()
-    variations = restrictions[
-        "Variação Máxima Preço Entre Dias Consecutivos (R$)"
-    ].astype(float).unique()
+    variations = (
+        restrictions["Variação Máxima Preço Entre Dias Consecutivos (R$)"].astype(float).unique()
+    )
     if len(tolerances) != 1 or len(variations) != 1:
         raise ValueError("Tolerância e variação precisam ser únicas no horizonte.")
     targets = dict(
@@ -175,136 +177,7 @@ def problem_from_frames(
         daily_variation=float(variations[0]),
         unit_cost=unit_cost,
         tax_rate=tax_rate,
-        scenario=scenario,
-        uncertainty=uncertainty,
     )
-
-
-def _weighted_cost(frame: pd.DataFrame) -> float:
-    volume = float(frame["volume_kg"].sum())
-    if volume <= 0:
-        raise ValueError("A janela de custo não possui volume positivo.")
-    return float(frame["custo_rs"].sum() / volume)
-
-
-def _cost_candidates(history: pd.DataFrame, cutoff: pd.Timestamp) -> dict[str, float]:
-    past = history.loc[history["data"] <= cutoff].sort_values("data")
-    if past.empty:
-        raise ValueError("Não há histórico disponível no corte informado.")
-    candidates = {
-        "ultimo": float(past["custo_kg"].iloc[-1]),
-        "media_expansiva": _weighted_cost(past),
-        "media_exponencial": float(
-            past["custo_kg"].ewm(alpha=0.30, adjust=False).mean().iloc[-1]
-        ),
-    }
-    for weeks in (1, 2, 4):
-        window = past.loc[past["data"] > cutoff - pd.Timedelta(days=7*weeks)]
-        candidates[f"media_{weeks}_semana" if weeks == 1 else f"media_{weeks}_semanas"] = (
-            _weighted_cost(window)
-        )
-    return candidates
-
-
-def validate_cost_forecasts(
-    development: pd.DataFrame,
-    *,
-    horizon_days: int = 14,
-    minimum_history_days: int = 28,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Compara previsores de custo em origens móveis sem consultar o holdout."""
-    required = {"data", "volume_kg", "custo_rs", "custo_kg"}
-    missing = required - set(development)
-    if missing:
-        raise ValueError(f"Base de custo sem colunas: {sorted(missing)}")
-    data = development.loc[:, sorted(required)].copy()
-    data["data"] = pd.to_datetime(data["data"])
-    data = data.sort_values("data")
-    start = data["data"].min() + pd.Timedelta(days=int(minimum_history_days))
-    last_cutoff = data["data"].max() - pd.Timedelta(days=int(horizon_days))
-    cutoffs = data.loc[
-        (data["data"].dt.weekday == 4)
-        & (data["data"] >= start)
-        & (data["data"] <= last_cutoff),
-        "data",
-    ]
-    rows: list[dict[str, Any]] = []
-    for cutoff in cutoffs:
-        future = data.loc[
-            (data["data"] > cutoff)
-            & (data["data"] <= cutoff + pd.Timedelta(days=int(horizon_days)))
-        ]
-        if future.empty:
-            continue
-        actual = _weighted_cost(future)
-        for method, prediction in _cost_candidates(data, cutoff).items():
-            error = prediction - actual
-            rows.append(
-                {
-                    "data_corte": cutoff,
-                    "metodo": method,
-                    "previsao_custo_kg": prediction,
-                    "realizado_custo_kg": actual,
-                    "erro": error,
-                    "erro_absoluto": abs(error),
-                }
-            )
-    details = pd.DataFrame(rows)
-    if details.empty:
-        raise ValueError("Histórico insuficiente para a validação temporal de custo.")
-    summary = (
-        details.groupby("metodo", as_index=False)
-        .agg(
-            MAE=("erro_absoluto", "mean"),
-            RMSE=("erro", lambda values: float(np.sqrt(np.mean(np.square(values))))),
-            vies=("erro", "mean"),
-            desvio_erro=("erro", "std"),
-            janelas=("erro", "size"),
-        )
-        .sort_values(["MAE", "metodo"])
-        .reset_index(drop=True)
-    )
-    best_mae = float(summary["MAE"].min())
-    summary["equivalente_5pct"] = summary["MAE"] <= best_mae * 1.05
-    summary["rotulo"] = summary["metodo"].map(COST_METHOD_LABELS)
-    return details, summary
-
-
-def select_cost_forecast(development: pd.DataFrame) -> dict[str, Any]:
-    """Seleciona e congela o custo futuro pela regra pré-registrada."""
-    details, summary = validate_cost_forecasts(development)
-    equivalent = summary.loc[summary["equivalente_5pct"]].copy()
-    complexity = {
-        "ultimo": 0,
-        "media_1_semana": 1,
-        "media_2_semanas": 2,
-        "media_4_semanas": 3,
-        "media_expansiva": 4,
-        "media_exponencial": 5,
-    }
-    equivalent["complexidade"] = equivalent["metodo"].map(complexity)
-    # O limiar de MAE define equivalência. Dentro dele, viés e estabilidade
-    # evitam escolher uma regra simples porém sistematicamente deslocada.
-    winner = equivalent.sort_values(
-        ["complexidade", "vies", "desvio_erro"],
-        key=lambda column: column.abs() if column.name == "vies" else column,
-    ).iloc[0]
-    data = development.copy()
-    data["data"] = pd.to_datetime(data["data"])
-    cutoff = data["data"].max()
-    candidates = _cost_candidates(data, cutoff)
-    errors = details.loc[details["metodo"] == winner["metodo"], "erro"]
-    return {
-        "method": str(winner["metodo"]),
-        "label": COST_METHOD_LABELS[str(winner["metodo"])],
-        "forecast_cost_kg": float(candidates[str(winner["metodo"])]),
-        # erro = previsão - realizado; portanto realizado plausível = previsão - erro.
-        "low_cost_kg": float(candidates[str(winner["metodo"])] - errors.quantile(0.90)),
-        "high_cost_kg": float(candidates[str(winner["metodo"])] - errors.quantile(0.10)),
-        "cutoff": cutoff.date().isoformat(),
-        "details": details,
-        "summary": summary,
-    }
 
 
 def price_bounds(problem: PriceProblem) -> list[tuple[float, float]]:
@@ -327,8 +200,6 @@ def demand_vector(problem: PriceProblem, prices: Sequence[float]) -> np.ndarray:
                 problem.artifact,
                 float(price),
                 weekday,
-                scenario=problem.scenario,
-                uncertainty=problem.uncertainty,
             )
             for price, weekday in zip(prices, problem.weekdays, strict=True)
         ]
@@ -396,9 +267,7 @@ def reachable_price_path(
     """Encontra o caminho componente a componente mais baixo ou mais alto alcançável."""
     if direction not in {"low", "high"}:
         raise ValueError("direction deve ser 'low' ou 'high'.")
-    a_ub, b_ub = _path_matrices(
-        problem, initial_delta=initial_delta, daily_delta=daily_delta
-    )
+    a_ub, b_ub = _path_matrices(problem, initial_delta=initial_delta, daily_delta=daily_delta)
     objective = np.ones(problem.n_days) * (1.0 if direction == "low" else -1.0)
     result = linprog(
         objective,
@@ -478,9 +347,7 @@ def diagnose_feasibility(
     ):
         applicable_delta = initial_delta if index == 0 else daily_delta
         change = abs(float(price) - float(previous))
-        variation_slack = (
-            None if applicable_delta is None else float(applicable_delta) - change
-        )
+        variation_slack = None if applicable_delta is None else float(applicable_delta) - change
         low_path_details.append(
             {
                 "date": date.date().isoformat(),
@@ -547,9 +414,10 @@ def validate_prices(
     variation_ok = daily_delta is None or bool(np.all(changes <= daily_delta + tolerance))
     support_ok = min(support_slacks) >= -tolerance
     return {
-        "satisfied": support_ok and initial_ok and variation_ok and (
-            target_ok or not enforce_targets
-        ),
+        "satisfied": support_ok
+        and initial_ok
+        and variation_ok
+        and (target_ok or not enforce_targets),
         "support_ok": support_ok,
         "initial_ok": initial_ok,
         "variation_ok": variation_ok,
@@ -569,9 +437,7 @@ def _nonlinear_constraints(
     enforce_targets: bool,
 ) -> list[dict[str, Any]]:
     constraints: list[dict[str, Any]] = []
-    a_ub, b_ub = _path_matrices(
-        problem, initial_delta=initial_delta, daily_delta=daily_delta
-    )
+    a_ub, b_ub = _path_matrices(problem, initial_delta=initial_delta, daily_delta=daily_delta)
     if a_ub is not None and b_ub is not None:
         constraints.append({"type": "ineq", "fun": lambda p: b_ub - a_ub @ p})
     if enforce_targets:
@@ -583,13 +449,15 @@ def _nonlinear_constraints(
                 [
                     {
                         "type": "ineq",
-                        "fun": lambda p, m=mask, bound=lower: demand_vector(problem, p)[m].sum()
-                        - bound,
+                        "fun": lambda p, m=mask, bound=lower: (
+                            demand_vector(problem, p)[m].sum() - bound
+                        ),
                     },
                     {
                         "type": "ineq",
-                        "fun": lambda p, m=mask, bound=upper: bound
-                        - demand_vector(problem, p)[m].sum(),
+                        "fun": lambda p, m=mask, bound=upper: (
+                            bound - demand_vector(problem, p)[m].sum()
+                        ),
                     },
                 ]
             )
@@ -699,13 +567,10 @@ def optimize_prices(
             "variacao_preco_rs": np.r_[prices[0] - problem.initial_price, np.diff(prices)],
         }
     )
-    weekly = (
-        daily.groupby("semana", as_index=False)
-        .agg(
-            volume_previsto_kg=("volume_previsto_kg", "sum"),
-            margem_prevista_rs=("margem_prevista_rs", "sum"),
-            preco_medio_kg=("preco_kg", "mean"),
-        )
+    weekly = daily.groupby("semana", as_index=False).agg(
+        volume_previsto_kg=("volume_previsto_kg", "sum"),
+        margem_prevista_rs=("margem_prevista_rs", "sum"),
+        preco_medio_kg=("preco_kg", "mean"),
     )
     weekly["meta_kg"] = weekly["semana"].map(problem.targets)
     weekly["limite_inferior_kg"] = weekly["meta_kg"] * (1 - problem.tolerance)
@@ -721,111 +586,3 @@ def optimize_prices(
         "initial_delta": initial_delta,
         "daily_delta": daily_delta,
     }
-
-
-def minimum_relaxation(
-    problem: PriceProblem,
-    *,
-    kind: str,
-    upper: float = 512.0,
-    precision: float = 1e-4,
-) -> dict[str, Any]:
-    """Minimiza uma relaxação de preço e só então maximiza a margem."""
-    if kind not in {"daily_variation", "initial_transition"}:
-        raise ValueError("Relaxação deve ser 'daily_variation' ou 'initial_transition'.")
-
-    def diagnostic_at(value: float) -> dict[str, Any]:
-        if kind == "daily_variation":
-            return diagnose_feasibility(problem, initial_delta=value, daily_delta=value)
-        return diagnose_feasibility(
-            problem, initial_delta=value, daily_delta=problem.daily_variation
-        )
-
-    low, high = 0.0, max(problem.daily_variation, 1.0)
-    while high < upper and not diagnostic_at(high)["potentially_feasible"]:
-        high *= 2.0
-    if not diagnostic_at(high)["potentially_feasible"]:
-        return {"status": "infeasible", "minimum": None, "solution": None}
-    while high - low > precision:
-        middle = (low + high) / 2.0
-        if diagnostic_at(middle)["potentially_feasible"]:
-            high = middle
-        else:
-            low = middle
-    minimum = high + precision
-    if kind == "daily_variation":
-        solution = optimize_prices(
-            problem, initial_delta=minimum, daily_delta=minimum
-        )
-    else:
-        solution = optimize_prices(
-            problem,
-            initial_delta=minimum,
-            daily_delta=problem.daily_variation,
-        )
-    return {"status": solution["status"], "minimum": minimum, "solution": solution}
-
-
-def volume_relaxations(problem: PriceProblem) -> dict[str, Any]:
-    """Calcula as menores alterações de volume mantendo as regras de preço oficiais."""
-    diagnostic = diagnose_feasibility(problem)
-    maximums = {
-        week: float(values["maximum_reachable_kg"])
-        for week, values in diagnostic["weeks"].items()
-    }
-    common_target = min(
-        maximums[week] / (1.0 - problem.tolerance) for week in problem.targets
-    )
-    tolerance = max(
-        1.0 - maximums[week] / problem.targets[week] for week in problem.targets
-    )
-    return {
-        "weekly_shortage_kg": {
-            week: max(
-                problem.targets[week] * (1.0 - problem.tolerance) - maximums[week],
-                0.0,
-            )
-            for week in problem.targets
-        },
-        "maximum_common_target_kg": float(common_target),
-        "minimum_common_tolerance": float(max(tolerance, 0.0)),
-        "maximum_weekly_volume_kg": maximums,
-    }
-
-
-def pareto_relaxations(
-    problem: PriceProblem,
-    *,
-    initial_grid: Sequence[float],
-    daily_grid: Sequence[float],
-) -> pd.DataFrame:
-    """Constrói uma fronteira não dominada entre duas relaxações e déficit."""
-    rows = []
-    for initial_delta in initial_grid:
-        for daily_delta in daily_grid:
-            diagnostic = diagnose_feasibility(
-                problem, initial_delta=initial_delta, daily_delta=daily_delta
-            )
-            shortage = sum(
-                float(values["shortage_kg"]) for values in diagnostic["weeks"].values()
-            )
-            rows.append(
-                {
-                    "salto_inicial_max_rs": float(initial_delta),
-                    "variacao_diaria_max_rs": float(daily_delta),
-                    "deficit_total_kg": shortage,
-                }
-            )
-    candidates = pd.DataFrame(rows).drop_duplicates()
-    non_dominated = []
-    values = candidates.to_numpy(dtype=float)
-    for index, row in enumerate(values):
-        dominated = np.any(
-            np.all(values <= row + 1e-9, axis=1)
-            & np.any(values < row - 1e-9, axis=1)
-            & (np.arange(len(values)) != index)
-        )
-        non_dominated.append(not dominated)
-    return candidates.loc[non_dominated].sort_values(
-        ["deficit_total_kg", "salto_inicial_max_rs", "variacao_diaria_max_rs"]
-    ).reset_index(drop=True)

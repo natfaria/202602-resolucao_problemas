@@ -24,7 +24,7 @@ def assumption_problem(
     em cada contexto. O multiplicador de demanda desloca o nível dessa curva.
     São hipóteses de estresse, sem probabilidades ou cobertura conjunta de confiança.
     """
-    if problem.artifact["family"] != "power" or problem.scenario != "central":
+    if problem.artifact["family"] != "power":
         raise ValueError("A sensibilidade exige a curva central de potência.")
     if (
         not np.isfinite([demand_factor, cost_factor, reference_price]).all()
@@ -54,5 +54,4 @@ def assumption_problem(
         artifact=curve,
         unit_cost=problem.costs * cost_factor,
         tax_rate=problem.tax_rate if tax_rate is None else tax_rate,
-        uncertainty=None,
     )

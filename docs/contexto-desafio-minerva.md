@@ -60,13 +60,13 @@ houve imputação nem remoção de linhas.
 ## 4. Como o projeto responde ao enunciado
 
 ```
-1.0 EDA e preparação  →  2.0.1 Curva preditiva  →  3.0 Otimização de referência  →  3.1 Flexibilizações
+1.0 EDA e preparação  →  2.0 Curva preditiva  →  3.0 Otimização de referência  →  3.1 Flexibilizações
 ```
 
 | Etapa | Notebook | Pergunta que responde | Saídas principais |
 |---|---|---|---|
 | Preparação e EDA | `notebooks/1.0-minerva-eda-preparacao.ipynb` | Os dados são confiáveis? Como variam preço, volume e calendário? | `data/processed/minerva_modelagem_treino.csv`, `data/interim/` |
-| Curva preditiva | `notebooks/2.0.1-minerva-modelo-preditivo.ipynb` | Como preço e calendário explicam o volume? | `models/preditivo_diario/curva_demanda.json` |
+| Curva preditiva | `notebooks/2.0-minerva-modelo-preditivo.ipynb` | Como preço e calendário explicam o volume? | `models/preditivo_diario/curva_demanda.json` |
 | Otimização de referência | `notebooks/3.0-minerva-otimizacao-precos.ipynb` | Quais regras impedem um plano? Qual plano maximiza a margem sob cada alteração? | `models/otimizacao/entradas_planejamento.json`, `data/processed/minerva_otimizacao_resultado.json`, `data/processed/minerva_plano_precos.csv` |
 | Flexibilizações | `notebooks/3.1-minerva-simulacao-relaxacoes.ipynb` | Quanto cada regra precisa ser relaxada? O que acontece com combinações? | `reports/tables/relaxacoes/`, `data/processed/minerva_simulacao_relaxacoes.json` |
 
@@ -91,7 +91,7 @@ Convenção adotada: `src/` é o pacote Python que contém o produto (lógica e 
 é exploração e relatório; `scripts/` guarda utilitários de geração de relatórios; `tests/` valida o
 código de `src/`.
 
-### Curva escolhida (notebook 2.0.1)
+### Curva escolhida (notebook 2.0)
 
 Modelo `P3-power-grouped-dias-uteis`. Para segunda a quinta, o volume previsto é:
 
@@ -171,7 +171,7 @@ principal é o WMAPE diário: 36,9% em média na validação e 37,2% no holdout.
 
 1. O enunciado, `docs/referencias/Minerva_Unifesp_ITA.pdf`, seções 0.3 e 0.5.
 2. Este documento.
-3. Os notebooks 1.0, 2.0.1 e 3.0, nessa ordem.
+3. Os notebooks 1.0, 2.0 e 3.0, nessa ordem.
 4. A formulação em [modelo-matematico-otimizacao-precos.md](modelo-matematico-otimizacao-precos.md).
 5. O notebook 3.1, para as flexibilizações.
 

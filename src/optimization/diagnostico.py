@@ -23,12 +23,16 @@ def diagnosticar(problema, *, tempo_limite: float = 30, mip_gap: float = 1e-6) -
     """
     estudo = RelaxationStudy(problema, time_limit=tempo_limite, mip_gap=mip_gap)
     if estudo.evaluate()["status"] == "optimal":
-        return pd.DataFrame([{
-            "Regra": "Todas as regras originais",
-            "Menor valor com plano": None,
-            "Margem no menor valor (R$)": None,
-            "Situação": "Já existe plano; nenhuma regra precisa ser flexibilizada",
-        }])
+        return pd.DataFrame(
+            [
+                {
+                    "Regra": "Todas as regras originais",
+                    "Menor valor com plano": None,
+                    "Margem no menor valor (R$)": None,
+                    "Situação": "Já existe plano; nenhuma regra precisa ser flexibilizada",
+                }
+            ]
+        )
     meta = float(next(iter(problema.targets.values())))
     linhas = []
     for regra, rotulo, limite, precisao in REGRAS_DIAGNOSTICO:
@@ -45,11 +49,17 @@ def diagnosticar(problema, *, tempo_limite: float = 30, mip_gap: float = 1e-6) -
         else:
             valor = None
             margem = None
-            situacao = f"Nenhum plano até o limite da busca ({limite:g})" if not tolerancia else "Nenhum plano na faixa testada"
-        linhas.append({
-            "Regra": rotulo,
-            "Menor valor com plano": valor,
-            "Margem no menor valor (R$)": margem,
-            "Situação": situacao,
-        })
+            situacao = (
+                f"Nenhum plano até o limite da busca ({limite:g})"
+                if not tolerancia
+                else "Nenhum plano na faixa testada"
+            )
+        linhas.append(
+            {
+                "Regra": rotulo,
+                "Menor valor com plano": valor,
+                "Margem no menor valor (R$)": margem,
+                "Situação": situacao,
+            }
+        )
     return pd.DataFrame(linhas)

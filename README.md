@@ -7,17 +7,18 @@ margem de contribuição prevista, sob metas semanais de volume, limite de varia
 dias e a curva de demanda estimada a partir do histórico.
 
 **Conclusão principal:** com todas as regras originais, não existe plano viável. O maior volume
-previsto é 76,99 kg e 84,62 kg por semana, contra um mínimo de 115,5 kg. O plano de maior margem
-exige relaxar o limite da primeira mudança de preço. As alternativas e as sensibilidades estão no
-[storytelling da otimização](docs/storytelling/03-storytelling-otimizacao-minerva.md).
+previsto é 76,99 kg na primeira semana e 84,62 kg na segunda, contra um mínimo de 115,5 kg por
+semana. O plano de maior margem exige relaxar o limite da primeira mudança de preço. Os resultados
+e as limitações de cada etapa estão nos [resumos](docs/storytelling/) e nos notebooks.
 
-Para o contexto completo do enunciado, das premissas e do estado atual, leia
-[contexto do desafio](docs/planejamento/contexto-desafio-minerva.md).
+Documentação complementar: [contexto do desafio](docs/contexto-desafio-minerva.md),
+[modelo matemático](docs/modelo-matematico-otimizacao-precos.md) e
+[referências](docs/referencias-bibliograficas.md).
 
 ## Como rodar do zero
 
-Pré-requisitos: Git, Python 3.10 ou superior (a revisão usa 3.13) e uma licença válida do Gurobi 13,
-necessária para resolver a otimização.
+Pré-requisitos: Git, Python 3.10 ou superior (o projeto foi executado com Python 3.13) e uma
+licença válida do Gurobi 13, necessária para resolver a otimização.
 
 **1. Clonar o repositório**
 
@@ -28,22 +29,17 @@ cd 202602-resolucao_problemas
 
 Se o alias SSH `github-mestrado` não estiver configurado, use a URL do GitHub do repositório.
 
-**2. Criar o ambiente virtual**
+**2. Criar o ambiente e instalar as dependências**
 
 ```bash
 python3 -m venv .venv
-```
-
-**3. Instalar as dependências**
-
-```bash
 .venv/bin/python -m pip install -U pip
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
 O `requirements.txt` instala também o próprio pacote `src` em modo editável (`-e .`).
 
-**4. Verificar o Gurobi**
+**3. Verificar o Gurobi**
 
 ```bash
 .venv/bin/python -c "import gurobipy; print('Gurobi', '.'.join(map(str, gurobipy.gurobi.version())))"
@@ -51,15 +47,15 @@ O `requirements.txt` instala também o próprio pacote `src` em modo editável (
 
 Deve aparecer `Gurobi 13.x`. Se a importação falhar, a licença não está disponível neste ambiente.
 
-**5. Rodar os testes**
+**4. Rodar os testes**
 
 ```bash
 .venv/bin/python -m pytest -q
 ```
 
-Devem passar todos os testes (99 no estado atual, em cerca de 25 segundos).
+Devem passar todos os 80 testes, em cerca de 10 segundos.
 
-**6. Usar a ferramenta de planejamento**
+**5. Usar a ferramenta de planejamento**
 
 ```bash
 .venv/bin/python -m streamlit run src/app/ferramenta_precos.py
@@ -69,39 +65,44 @@ Abra o endereço indicado no terminal (normalmente `http://localhost:8501`). As 
 da planilha e das restrições já estão versionadas; não é preciso rodar os notebooks para usar a
 ferramenta.
 
-**7. (Opcional) Reproduzir o pipeline dos notebooks**
+**6. (Opcional) Reproduzir o pipeline dos notebooks**
 
 Os artefatos já estão no repositório. Reexecute as etapas apenas para reproduzir ou alterar
 premissas. Cada etapa sobrescreve arquivos versionados, então o `git status` mostrará as mudanças.
+Execute na ordem, cada uma com um kernel limpo:
 
-- **a.** Preparação e EDA (rápido):
-  ```bash
-  .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/1.0-minerva-eda-preparacao.ipynb --ExecutePreprocessor.timeout=300
-  ```
-- **b.** Curva preditiva (publica `models/preditivo_diario/curva_demanda.json`):
-  ```bash
-  .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/2.0.1-minerva-modelo-preditivo.ipynb --ExecutePreprocessor.timeout=300
-  ```
-- **c.** Otimização de referência (publica `models/otimizacao/entradas_planejamento.json` e os planos; usa o Gurobi):
-  ```bash
-  .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/3.0-minerva-otimizacao-precos.ipynb --ExecutePreprocessor.timeout=300
-  ```
-- **d.** Flexibilizações graduais (usa o Gurobi em muitas resoluções):
-  ```bash
-  .venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/3.1-minerva-simulacao-relaxacoes.ipynb --ExecutePreprocessor.timeout=300
-  ```
-- **e.** Atualizar os relatórios a partir dos artefatos:
-  ```bash
-  .venv/bin/python scripts/update_project_report.py
-  ```
+```bash
+.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/1.0-minerva-eda-preparacao.ipynb --ExecutePreprocessor.timeout=300
+.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/2.0-minerva-modelo-preditivo.ipynb --ExecutePreprocessor.timeout=300
+.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/3.0-minerva-otimizacao-precos.ipynb --ExecutePreprocessor.timeout=300
+.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/3.1-minerva-simulacao-relaxacoes.ipynb --ExecutePreprocessor.timeout=300
+.venv/bin/python scripts/update_project_report.py
+```
 
-Para abrir os notebooks de forma interativa, use `.venv/bin/python -m jupyter lab`.
+Os notebooks 3.0 e 3.1 usam o Gurobi em muitas resoluções. Para abrir os notebooks de forma
+interativa, use `.venv/bin/python -m jupyter lab`.
 
-**8. (Opcional) Ver a documentação**
+**7. (Opcional) Ver a documentação**
 
 ```bash
 .venv/bin/python -m mkdocs serve --config-file docs/mkdocs.yml
 ```
+
+### Comandos do Makefile
+
+| Comando | O que faz |
+|---|---|
+| `make help` | Lista os comandos disponíveis |
+| `make requirements` | Instala as dependências em `.venv` |
+| `make test` | Roda os testes |
+| `make lint` | Verifica formatação e lint de `src/` |
+| `make format` | Aplica as correções automáticas |
+| `make data` | Reexecuta somente o notebook 1.0 |
+| `make notebooks` | Reexecuta os quatro notebooks em ordem (usa Gurobi) |
+| `make report` | Atualiza os resumos a partir dos artefatos |
+| `make report-check` | Falha se os resumos estiverem defasados |
+| `make docs` | Gera o site em `site/` com verificação estrita de links |
+| `make clean` | Remove caches e arquivos compilados locais |
 
 ## Visão geral do fluxo
 
@@ -109,13 +110,13 @@ O projeto é dividido em etapas que se comunicam por arquivos persistidos, com v
 integridade por hash:
 
 ```
-1.0 EDA e preparação → 2.0.1 Curva preditiva → 3.0 Otimização de referência → 3.1 Flexibilizações
+1.0 EDA e preparação → 2.0 Curva preditiva → 3.0 Otimização de referência → 3.1 Flexibilizações
                                                          │
                                           Ferramenta Streamlit (usa as mesmas funções)
 ```
 
 1. **Preparação (1.0):** valida a planilha, separa desenvolvimento e holdout e explora os dados.
-2. **Curva preditiva (2.0.1):** ajusta e seleciona a curva de demanda por validação cruzada temporal.
+2. **Curva preditiva (2.0):** ajusta e seleciona a curva de demanda por validação cruzada temporal.
    Publica `models/preditivo_diario/curva_demanda.json`.
 3. **Otimização de referência (3.0):** resolve o plano de 10 dias com as regras originais, diagnostica
    a viabilidade, testa uma regra por vez e compara com o holdout. Publica as entradas do
@@ -123,72 +124,20 @@ integridade por hash:
 4. **Flexibilizações (3.1):** mede quanto cada regra precisa ser relaxada e o efeito de combinações.
 5. **Ferramenta:** interface para planejar com entradas definidas pelo usuário.
 
-## Estrutura do repositório
-
-```
-├── .streamlit/       tema visual da ferramenta (cores e fonte)
-├── data/
-│   ├── raw/          fonte original (planilha do desafio), não modificada
-│   ├── interim/      histórico limpo, desenvolvimento, holdout e restrições
-│   └── processed/    dados de modelagem, resultados e planos
-├── docs/             documentação (mkdocs) e referências
-├── models/
-│   ├── preditivo_diario/   curva de demanda publicada
-│   └── otimizacao/         entradas congeladas e limites de flexibilização
-├── notebooks/        as quatro etapas da entrega
-├── reports/          tabelas e figuras geradas pelos notebooks
-├── scripts/          utilitário de atualização dos relatórios
-├── src/              código do produto (lógica, solver, ferramenta e interface)
-│   ├── modeling/     curva de demanda e benchmarks
-│   ├── optimization/ entradas, problema, solver, relaxações e ferramenta
-│   └── app/          interface Streamlit da ferramenta e seus logos
-└── tests/            testes automatizados e fixtures legadas
-```
-
-## Como usar cada componente
-
-### Instalação
-
-Use Python 3.10 ou superior. A revisão usa Python 3.13 e Gurobi 13 com licença válida.
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-```
-
-O passo a passo completo, com verificações, está em
-[Instalação e reprodução](docs/planejamento/getting-started.md).
-
-### Notebooks
-
-Execute na ordem, cada um com um kernel limpo:
-
-```bash
-.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/1.0-minerva-eda-preparacao.ipynb --ExecutePreprocessor.timeout=300
-.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/2.0.1-minerva-modelo-preditivo.ipynb --ExecutePreprocessor.timeout=300
-.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/3.0-minerva-otimizacao-precos.ipynb --ExecutePreprocessor.timeout=300
-.venv/bin/python -m jupyter nbconvert --to notebook --execute --inplace notebooks/3.1-minerva-simulacao-relaxacoes.ipynb --ExecutePreprocessor.timeout=300
-```
-
-Ou, para abrir e explorar, `.venv/bin/python -m jupyter lab`. Atalho: `make data` executa só o 1.0.
+## Notebooks
 
 | Notebook | O que responde |
 |---|---|
 | [1.0 Preparação e EDA](notebooks/1.0-minerva-eda-preparacao.ipynb) | Os dados são confiáveis? Como variam preço, volume e calendário? |
-| [2.0.1 Demanda preditiva](notebooks/2.0.1-minerva-modelo-preditivo.ipynb) | Como preço e calendário explicam o volume? Qual curva foi escolhida? |
+| [2.0 Demanda preditiva](notebooks/2.0-minerva-modelo-preditivo.ipynb) | Como preço e calendário explicam o volume? Qual curva foi escolhida? |
 | [3.0 Otimização de referência](notebooks/3.0-minerva-otimizacao-precos.ipynb) | Quais regras impedem um plano? Qual plano maximiza a margem sob cada alteração? |
 | [3.1 Flexibilizações](notebooks/3.1-minerva-simulacao-relaxacoes.ipynb) | Quanto cada regra precisa ser relaxada? O que acontece com combinações? |
 
-Após reexecutar as etapas, atualize os relatórios:
+Resumos das etapas em [docs/storytelling/](docs/storytelling/): [exploração](docs/storytelling/01-storytelling-eda-minerva.md),
+[curva de demanda](docs/storytelling/02-curva-de-demanda-modelo.md) e
+[otimização e flexibilizações](docs/storytelling/03-storytelling-otimizacao-minerva.md).
 
-```bash
-.venv/bin/python scripts/update_project_report.py
-```
-
-Use `--check` para verificar se os relatórios estão defasados em relação aos artefatos, sem escrever
-arquivos.
-
-### Ferramenta de planejamento (Streamlit)
+## Ferramenta de planejamento (Streamlit)
 
 Interface para planejar preços com entradas informadas pelo usuário. Execute a partir da raiz:
 
@@ -213,7 +162,7 @@ alcançável por semana.
 A lógica está em `src/optimization/ferramenta.py`, e a interface só chama essas funções. As margens
 são previsões condicionais à curva congelada.
 
-### Código-fonte (`src/`)
+## Código-fonte (`src/`)
 
 - `src/modeling/demand_curve.py`: carregamento, validação e previsão da curva publicada.
 - `src/modeling/benchmarks.py`: benchmarks de referência para a previsão.
@@ -221,44 +170,52 @@ são previsões condicionais à curva congelada.
 - `src/optimization/planning_inputs.py`: salva e carrega as entradas do planejamento com verificação de hash.
 - `src/optimization/gurobi_solver.py`: solver Gurobi para cenários de regras.
 - `src/optimization/relaxation_study.py`: mínimos de viabilidade e curvas de flexibilização.
+- `src/optimization/assumption_sensitivity.py`: sensibilidade a demanda, custo, imposto e elasticidade.
 - `src/optimization/holdout_comparison.py`: comparação dos planos com os dados reais do holdout.
+- `src/optimization/diagnostico.py`: menor flexibilização de cada regra que permite um plano.
 - `src/optimization/ferramenta.py`: entradas, solução e análise de restrições para a ferramenta.
 
-### Testes
+## Testes e qualidade
 
 ```bash
 .venv/bin/python -m pytest -q
+make lint
 ```
 
-Os testes validam a curva, o solver, as entradas congeladas, a comparação com o holdout e a
-ferramenta. Modelos históricos usados apenas para compatibilidade ficam em `tests/fixtures/legacy/`.
-
-Lint e formatação:
-
-```bash
-make lint      # ruff check e formato (hoje acusa formatação pendente em src/modeling/demand_curve.py)
-make format    # aplica as correções automáticas
-```
-
-### Documentação
-
-```bash
-.venv/bin/python -m mkdocs serve --config-file docs/mkdocs.yml
-.venv/bin/python -m mkdocs build --config-file docs/mkdocs.yml --strict
-```
-
-O ponto de entrada é [Planejamento e funcionamento](docs/planejamento/index.md), com a formulação
-matemática em [modelo matemático](docs/planejamento/modelo-matematico-otimizacao-precos.md) e as
-referências em [referências metodológicas](docs/referencias-bibliograficas.md).
+Os testes validam a curva, o solver, as entradas congeladas, a comparação com o holdout, a
+sensibilidade, os benchmarks e a ferramenta. O lint cobre `src/`, pelas regras do `pyproject.toml`.
 
 ## Artefatos
 
-- `data/raw/`: fontes originais.
-- `data/interim/` e `data/processed/`: dados preparados, resultados e planos.
+- `data/raw/`: fonte original (planilha do desafio), não modificada.
+- `data/interim/`: holdout e restrições, separados pela etapa 1.0.
+- `data/processed/`: base de modelagem, resultados e planos.
 - `models/preditivo_diario/`: curva preditiva publicada.
 - `models/otimizacao/`: entradas congeladas do planejamento e limites de flexibilização.
-- `reports/tables/` e `reports/figures/`: comparações e figuras da otimização de referência.
-- `reports/tables/relaxacoes/` e `reports/figures/relaxacoes/`: estudo de flexibilizações.
+- `reports/tables/` e `reports/figures/`: tabelas e figuras geradas pelos notebooks, com
+  `reports/tables/relaxacoes/` e `reports/figures/relaxacoes/` para o estudo de flexibilizações.
 
 Cada plano exportado conserva sua curva, suas entradas e suas condições operacionais. Somente os
 quatro notebooks listados compõem a entrega.
+
+## Estrutura do repositório
+
+```
+├── .streamlit/       tema visual da ferramenta (cores e fonte)
+├── data/
+│   ├── raw/          fonte original (planilha do desafio), não modificada
+│   ├── interim/      holdout e restrições
+│   └── processed/    dados de modelagem, resultados e planos
+├── docs/             contexto, modelo matemático, resumos das etapas e referências
+├── models/
+│   ├── preditivo_diario/   curva de demanda publicada
+│   └── otimizacao/         entradas congeladas e limites de flexibilização
+├── notebooks/        as quatro etapas da entrega
+├── reports/          tabelas e figuras geradas pelos notebooks
+├── scripts/          atualização dos resumos a partir dos artefatos
+├── src/              código do produto (lógica, solver, ferramenta e interface)
+│   ├── modeling/     curva de demanda e benchmarks
+│   ├── optimization/ entradas, problema, solver, relaxações e ferramenta
+│   └── app/          interface Streamlit da ferramenta e seus logos
+└── tests/            testes automatizados
+```

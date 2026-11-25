@@ -1,16 +1,20 @@
 from pathlib import Path
 
+import pytest
+
 from src.modeling.demand_curve import context_for_weekday, load_artifact
 
+ARTIFACT = Path(__file__).parents[1] / "models/preditivo_diario/curva_demanda.json"
 
-def test_frozen_artifact_uses_the_selected_calendar_partition():
-    artifact_path = Path(__file__).parents[1] / "tests/fixtures/legacy/demand_curve_champion.json"
-    artifact = load_artifact(artifact_path)
 
-    assert context_for_weekday(artifact, "Segunda") == "Segunda_a_Quinta"
-    assert context_for_weekday(artifact, "Terça") == "Segunda_a_Quinta"
-    assert context_for_weekday(artifact, "Quarta") == "Segunda_a_Quinta"
-    assert context_for_weekday(artifact, "Quinta") == "Segunda_a_Quinta"
+def test_published_artifact_uses_the_selected_calendar_partition():
+    artifact = load_artifact(ARTIFACT)
+
+    for weekday in ["Segunda", "Terça", "Quarta", "Quinta"]:
+        assert context_for_weekday(artifact, weekday) == "Segunda_a_Quinta"
     assert context_for_weekday(artifact, "Sexta") == "Sexta"
-    assert context_for_weekday(artifact, "Sábado") == "Fim_de_semana"
-    assert context_for_weekday(artifact, "Domingo") == "Fim_de_semana"
+
+
+def test_weekend_is_outside_the_published_domain():
+    with pytest.raises(ValueError, match="não reconhecido"):
+        context_for_weekday(load_artifact(ARTIFACT), "Sábado")

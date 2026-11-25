@@ -10,9 +10,7 @@ from src.optimization.price_schedule import (
     margin_vector,
     optimize_prices,
     problem_from_frames,
-    select_cost_forecast,
     validate_prices,
-    volume_relaxations,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,48 +18,36 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture(scope="module")
 def minerva_problem():
-    artifact = load_artifact(ROOT / "tests/fixtures/legacy/demand_curve_champion_livro.json")
-    uncertainty = load_artifact(ROOT / "tests/fixtures/legacy/demand_curve_uncertainty_livro.json")
     development = pd.read_csv(
         ROOT / "data/processed/minerva_modelagem_treino.csv", parse_dates=["data"]
+    ).sort_values("data")
+    last_day = development.iloc[-1]
+    return problem_from_frames(
+        load_artifact(ROOT / "models/preditivo_diario/curva_demanda.json"),
+        pd.read_csv(ROOT / "data/interim/minerva_restricoes.csv"),
+        unit_cost=float(last_day["custo_kg"]),
+        initial_price=float(last_day["preco_kg"]),
     )
-    restrictions = pd.read_csv(ROOT / "data/interim/minerva_restricoes.csv")
-    cost = select_cost_forecast(development)
-    problem = problem_from_frames(
-        artifact,
-        restrictions,
-        unit_cost=cost["forecast_cost_kg"],
-        initial_price=float(development.sort_values("data")["preco_kg"].iloc[-1]),
-        uncertainty=uncertainty,
-    )
-    return problem, cost
-
-
-def test_cost_is_selected_without_holdout_and_uses_four_week_rule(minerva_problem):
-    _, cost = minerva_problem
-    assert cost["cutoff"] == "2025-10-31"
-    assert cost["method"] == "media_4_semanas"
-    assert cost["forecast_cost_kg"] == pytest.approx(988.8425607921679)
 
 
 def test_official_problem_is_infeasible_and_does_not_emit_plan(minerva_problem):
-    problem, _ = minerva_problem
+    problem = minerva_problem
     diagnostic = diagnose_feasibility(problem)
     result = optimize_prices(problem)
 
     assert diagnostic["status"] == "infeasible_targets"
     assert diagnostic["weeks"]["semana_1"]["maximum_reachable_kg"] == pytest.approx(
-        79.2015, abs=1e-3
+        76.9868, abs=1e-3
     )
     assert diagnostic["weeks"]["semana_2"]["maximum_reachable_kg"] == pytest.approx(
-        87.0504, abs=1e-3
+        84.6162, abs=1e-3
     )
     assert result["status"] == "infeasible"
     assert result["daily"] is None
 
 
 def test_removing_only_initial_link_recovers_a_valid_plan(minerva_problem):
-    problem, _ = minerva_problem
+    problem = minerva_problem
     result = optimize_prices(problem, enforce_initial=False)
 
     assert result["status"] == "optimal"
@@ -78,7 +64,7 @@ def test_removing_only_initial_link_recovers_a_valid_plan(minerva_problem):
 
 
 def test_margin_recomposes_tax_cost_and_volume(minerva_problem):
-    problem, _ = minerva_problem
+    problem = minerva_problem
     result = optimize_prices(problem, enforce_initial=False)
     daily = result["daily"]
     recomposed = (
@@ -89,53 +75,19 @@ def test_margin_recomposes_tax_cost_and_volume(minerva_problem):
     assert recomposed.sum() == pytest.approx(result["total_margin_rs"])
 
 
-def test_volume_relaxations_match_official_envelope(minerva_problem):
-    problem, _ = minerva_problem
-    relaxations = volume_relaxations(problem)
-
-    assert relaxations["weekly_shortage_kg"]["semana_1"] == pytest.approx(36.2985, abs=1e-3)
-    assert relaxations["weekly_shortage_kg"]["semana_2"] == pytest.approx(28.4496, abs=1e-3)
-    assert relaxations["maximum_common_target_kg"] == pytest.approx(113.1450, abs=1e-3)
-    assert relaxations["minimum_common_tolerance"] == pytest.approx(0.519991, abs=1e-5)
-
-
-# Etapa 0: Testes de regressão para valores de referência
-from src.optimization.price_schedule import minimum_relaxation
-
-
-def test_daily_variation_minimum_is_reproducible(minerva_problem):
-    """Δ diário mínimo deve ser reproduzível para detectar regressões."""
-    problem, _ = minerva_problem
-    result = minimum_relaxation(problem, kind="daily_variation")
-
-    assert result["status"] == "optimal"
-    assert result["minimum"] == pytest.approx(16.09866, abs=0.01)
-    assert result["solution"]["total_margin_rs"] == pytest.approx(52073, abs=1)
-
-
-def test_initial_transition_minimum_is_reproducible(minerva_problem):
-    """Salto inicial mínimo deve ser reproduzível para detectar regressões."""
-    problem, _ = minerva_problem
-    result = minimum_relaxation(problem, kind="initial_transition")
-
-    assert result["status"] == "optimal"
-    assert result["minimum"] == pytest.approx(41.47561, abs=0.01)
-    assert result["solution"]["total_margin_rs"] == pytest.approx(46421, abs=1)
-
-
 def test_removing_all_initial_constraints_reproduces_reference(minerva_problem):
-    """Sem ligação inicial e sem meta variação fornece margem de ~R$ 59.294."""
-    problem, _ = minerva_problem
+    """Sem a ligação inicial, a margem é R$ 48.917,58 (cenário R1 publicado)."""
+    problem = minerva_problem
     result = optimize_prices(problem, enforce_initial=False)
 
     assert result["status"] == "optimal"
-    assert result["total_margin_rs"] == pytest.approx(59294, abs=1)
+    assert result["total_margin_rs"] == pytest.approx(48917.58, abs=0.01)
 
 
 def test_removing_all_volume_targets_reproduces_reference(minerva_problem):
-    """Sem meta de volume fornece margem de ~R$ 37.888."""
-    problem, _ = minerva_problem
+    """Sem metas semanais e com a ligação inicial mantida, a margem é R$ 33.336,94."""
+    problem = minerva_problem
     result = optimize_prices(problem, enforce_targets=False)
 
     assert result["status"] == "optimal"
-    assert result["total_margin_rs"] == pytest.approx(37888, abs=1)
+    assert result["total_margin_rs"] == pytest.approx(33336.94, abs=0.01)

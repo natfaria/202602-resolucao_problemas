@@ -35,10 +35,6 @@ class Relaxation:
         if self.target_nominal_factor <= 0:
             raise ValueError("O fator de meta nominal deve ser positivo.")
 
-    @property
-    def is_identity(self) -> bool:
-        return all(value == 1 for value in asdict(self).values())
-
 
 def apply_relaxation(problem: PriceProblem, relaxation: Relaxation) -> PriceProblem:
     """Produz entradas independentes, mantendo custo, curva e preço anterior observados."""

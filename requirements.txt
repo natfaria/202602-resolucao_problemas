@@ -8,16 +8,13 @@ notebook
 numpy
 openpyxl
 pandas
-pip
 pytest
 pymdown-extensions
 streamlit
 python-dotenv
 ruff
-scikit-learn
 scipy
 seaborn
 statsmodels
 tqdm
-typer
 -e .

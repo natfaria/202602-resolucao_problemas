@@ -1,6 +1,6 @@
-"""Atualiza os relatórios da entrega a partir de resultados persistidos e compatíveis.
+"""Atualiza os resumos das etapas 2.0 e 3.0/3.1 a partir de resultados persistidos e compatíveis.
 
-Execute após os quatro notebooks. --check verifica defasagem sem escrever arquivos.
+Execute após os notebooks. --check verifica defasagem sem escrever arquivos.
 """
 
 import argparse
@@ -11,6 +11,7 @@ import math
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+PREDITIVO = "reports/tables/preditivo_diario/"
 
 
 def read_json(name):
@@ -23,27 +24,18 @@ def read_csv(name):
 
 
 def number(value, decimals=2):
-    if value is None or value == "":
-        return "-"
     value = float(value)
     if not math.isfinite(value):
         return "-"
     return f"{value:,.{decimals}f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
 
-def table(headers, rows):
-    def row(values):
-        return "| " + " | ".join(str(v).replace("|", "/") for v in values) + " |"
-
-    return "\n".join([row(headers), row(["---"] * len(headers)), *(row(r) for r in rows)])
-
-
-def render_reports():
+def verify_sources():
+    """Confere que os resultados foram gerados a partir dos artefatos atuais."""
     model = read_json("models/preditivo_diario/curva_demanda.json")
     planning = read_json("models/otimizacao/entradas_planejamento.json")
     optimization = read_json("data/processed/minerva_otimizacao_resultado.json")
     relaxation = read_json("data/processed/minerva_simulacao_relaxacoes.json")
-    diagnostic = read_json("data/processed/minerva_diagnostico_infactividade.json")["diagnostic"]
     for artifact in [planning, optimization, relaxation]:
         if artifact["model_core_sha256"] != model["model_core_sha256"]:
             raise ValueError("Resultados incompatíveis com o modelo atual; reexecute as etapas.")
@@ -55,524 +47,142 @@ def render_reports():
         raise ValueError("A otimização não corresponde às entradas atuais.")
     if relaxation["planning_inputs_sha256"] != planning["inputs_sha256"]:
         raise ValueError("As flexibilizações não correspondem ao arquivo de entradas atual.")
-    prefix = "reports/tables/preditivo_diario/"
-    candidates = read_csv(prefix + "comparacao_candidatos.csv")
-    holdout = read_csv(prefix + "metricas_holdout.csv")[0]
-    weekly = read_csv(prefix + "resumo_semanal_holdout.csv")
-    folds = read_csv(prefix + "calendario_validacao_cruzada.csv")
-    benchmark = read_csv(prefix + "metricas_benchmark_calendario.csv")
-    coefficients = read_csv(prefix + "coeficientes_ajuste_final.csv")
+    return model
+
+
+def render_curve(model):
+    candidates = read_csv(PREDITIVO + "comparacao_candidatos.csv")
+    holdout = read_csv(PREDITIVO + "metricas_holdout.csv")[0]
+    weekly = read_csv(PREDITIVO + "resumo_semanal_holdout.csv")
+    benchmark = read_csv(PREDITIVO + "metricas_benchmark_calendario.csv")
     chosen = next(r for r in candidates if r["Código"] == model["selection"]["chosen"])
     baseline = 100 * sum(float(r["WMAPE diário"]) for r in benchmark) / len(benchmark)
     beta = model["coefficients"]["ln_preco"]
-    candidate_table = table(
-        [
-            "Modelo",
-            "Parâmetros",
-            "WMAPE diário médio (%)",
-            "RMSE médio (kg)",
-            "Elegível",
-            "Zona prática",
-        ],
-        [
-            [
-                r["Código"],
-                r["Parâmetros"],
-                number(r["WMAPE diário (%)"]),
-                number(r["RMSE (kg)"]),
-                "Sim" if r["Válido"] == "True" else "Não",
-                "Sim" if r["Na zona de equivalência"] == "True" else "Não",
-            ]
-            for r in candidates
-        ],
+    one_percent = 100 * (1.01**beta - 1)
+    sexta = 100 * math.exp(model["coefficients"]["contexto_Sexta"])
+    forecast = sum(float(r["volume_previsto_kg"]) for r in weekly)
+    actual = sum(float(r["volume_real_kg"]) for r in weekly)
+    direction = "subestima" if forecast < actual else "superestima"
+    supports = "\n".join(
+        f"- {context.replace('_', ' ')}: de R$ {number(s['min'])} a R$ {number(s['max'])}/kg."
+        for context, s in model["price_support"].items()
     )
-    fold_table = table(
-        ["Fold", "Origem", "Ajuste até", "Observações de ajuste", "Dias úteis avaliados"],
-        [
-            [
-                r["Fold"],
-                r["Origem"],
-                r["Ajuste até"],
-                r["Observações de ajuste"],
-                r["Dias úteis avaliados"],
-            ]
-            for r in folds
-        ],
-    )
-    coefficient_table = table(
-        ["Termo", "Coeficiente", "IC 95% HC3"],
-        [
-            [
-                r["variavel"],
-                number(r["coeficiente"], 4),
-                f"{number(r['IC95_inferior'])} a {number(r['IC95_superior'])}",
-            ]
-            for r in coefficients
-        ],
-    )
-    support_table = table(
-        ["Contexto", "n", "Preço mínimo (R$/kg)", "Preço máximo (R$/kg)"],
-        [
-            [k.replace("_", " "), v["n"], number(v["min"]), number(v["max"])]
-            for k, v in model["price_support"].items()
-        ],
-    )
-    holdout_table = table(
-        ["Métrica", "Resultado"],
-        [[k, number(v) + ("%" if "%" in k else "")] for k, v in holdout.items()],
-    )
-    weekly_table = table(
-        ["Semana", "Observado (kg)", "Previsto (kg)", "Erro do total (%)"],
-        [
-            [
-                r["inicio_semana"],
-                number(r["volume_real_kg"]),
-                number(r["volume_previsto_kg"]),
-                number(r["erro_%"]),
-            ]
-            for r in weekly
-        ],
-    )
-    example_table = table(
-        ["Preço (R$/kg)", "Segunda a quinta (kg/dia)", "Sexta (kg/dia)"],
-        [
-            [
-                number(p),
-                *[
-                    number(
-                        model["smearing_factor"]
-                        * math.exp(model["coefficients"]["const"] + gamma)
-                        * p**beta
-                    )
-                    for gamma in [0, model["coefficients"]["contexto_Sexta"]]
-                ],
-            ]
-            for p in [1250, 1275, 1300]
-        ],
-    )
-    story = f"""# Como chegamos à curva de demanda: modelo atual
+    return f"""# Curva de demanda: resumo da etapa 2.0
 
 <!-- Gerado por scripts/update_project_report.py; atualize os artefatos, não os números à mão. -->
 
-Esta narrativa acompanha `notebooks/2.0.1-minerva-modelo-preditivo.ipynb`, que recebe a preparação
-`1.0` e publica `models/preditivo_diario/curva_demanda.json`. O caminho deste documento foi mantido
-para preservar referências existentes; a metodologia descrita é a atual.
+Resumo da etapa do notebook 2.0 (`notebooks/2.0-minerva-modelo-preditivo.ipynb`). Ela estima,
+por validação cruzada temporal, como o preço e o calendário explicam o volume diário em dias úteis,
+e publica a curva usada pelo otimizador em `models/preditivo_diario/curva_demanda.json`.
 
-## 1. Resultado e alcance
+## Resultado
 
-A regra seleciona `P3`, uma curva de potência com elasticidade compartilhada, três níveis de
-calendário no ajuste e quatro coeficientes. O domínio publicado é segunda a sexta.
-O WMAPE diário médio nos seis folds é **{number(chosen["WMAPE diário (%)"])}%**. No holdout histórico,
-o WMAPE diário é **{number(holdout["WMAPE diário (%)"])}%** e o semanal é **{number(holdout["WMAPE semanal (%)"])}%**.
-Esses erros descrevem desempenho observado; não estabelecem suficiência para uso comercial ou
-uma garantia de atendimento das metas. A [história da otimização](storytelling-otimizacao-minerva.md)
-mostram que o caso com todas as regras originais é inviável.
+- Modelo escolhido: `{chosen["Código"]}`, curva de potência com elasticidade compartilhada e um
+  nível de demanda por contexto de calendário.
+- Elasticidade estimada: `{number(beta, 4)}`. Mantido o calendário, 1% a mais no preço reduz o
+  volume previsto em cerca de {number(-one_percent)}%.
+- Na sexta, o nível previsto é cerca de {number(sexta, 1)}% do nível de segunda a quinta, no mesmo preço.
+- Erro na validação cruzada: WMAPE diário médio de {number(chosen["WMAPE diário (%)"])}%.
+- Holdout de dez dias úteis: WMAPE diário de {number(holdout["WMAPE diário (%)"])}% e semanal de
+  {number(holdout["WMAPE semanal (%)"])}%. Nas duas semanas, o modelo {direction} o volume total.
+- Referência sem preço (média do mesmo dia da semana): WMAPE diário médio de {number(baseline)}%.
 
-## 2. Dados, calendário e hipóteses
+## Limites
 
-A planilha contém 86 registros de um produto: 76 observações de desenvolvimento, de 01/08 a
-31/10/2025, e dez observações de holdout, de 03/11 a 14/11/2025. Preço médio realizado é receita
-sobre volume. Não se assume que esse valor seja um preço de lista único e controlável.
-A [exploração dos dados](storytelling-eda-minerva.md) identifica associação negativa entre preço e
-volume nos dias úteis e diferenças de nível por dia da semana, sem identificar causalidade.
+- A relação é observacional. Ela não mede o efeito causal do preço nem considera estoque,
+  promoções, concorrência ou preço de lista.
+- Os erros descrevem desempenho observado. Não garantem que as metas semanais serão atingidas.
+- A curva vale apenas para dias úteis e para a faixa de preços observada no treino:
 
-Médias de preço parecidas entre dias não excluem contribuições do preço: numa curva não linear,
-a distribuição inteira importa. Boxplots e testes exploratórios motivam candidatos, sem demonstrar
-que grupos têm demanda igual. Um p-valor alto significa ausência de evidência suficiente para
-rejeitar a hipótese do teste, não evidência de equivalência. O agrupamento de segunda a quinta é
-uma escolha de representação e parcimônia avaliada pela previsão.
+{supports}
 
-**Escopo.** Dez dias úteis são uma delimitação deste estudo. O histórico contém cinco sábados e
-cinco domingos; dias sem registro não foram convertidos em volume zero. A cobertura do holdout
-não comprova que a operação feche aos fins de semana. Planejá-los exigiria ampliar calendário,
-validação e calibração. A curva publicada rejeita esses dias.
+- O holdout foi usado uma única vez, depois do congelamento da curva. Uma nova avaliação final
+  exige observações posteriores.
 
-## 3. Validação temporal e regra de escolha
+## Onde estão os detalhes
 
-O protocolo usa seis origens semanais, ajuste expansivo e horizonte de 14 dias corridos, com dez
-dias úteis avaliados por origem. Coeficientes e smearing são calculados apenas no passado daquele
-fold; não há atualização dentro do horizonte. Essa separação segue Hyndman e Athanasopoulos
-(2021, seção 5.10), nas [referências](../referencias-bibliograficas.md).
-Essa é a regra de avaliação das previsões. O uso operacional, com execução de uma semana e
-replanejamento semanal, está explicado na [história da otimização](storytelling-otimizacao-minerva.md#uso-operacional-planejar-duas-semanas-e-executar-uma).
-
-**Tabela R2.1:** Calendário da avaliação; fonte: `calendario_validacao_cruzada.csv`.
-
-{fold_table}
-
-![Figura R2.1: calendário dos folds](../assets/figures/preditivo_diario/calendario_folds.png)
-
-**Figura R2.1:** Desenvolvimento usado para ajuste e dez dias úteis futuros por fold. As datas
-avaliadas se sobrepõem entre origens; os folds não são amostras independentes. Fonte: notebook `2.0.1`.
-
-A métrica principal é a média dos WMAPEs diários dos seis folds, com igual peso por origem.
-Em cada fold, WMAPE é soma dos erros absolutos dividida pelo volume observado total. O resumo
-não é um WMAPE único sobre previsões empilhadas. RMSE, viés e erro semanal são complementares.
-
-Entram na zona prática os candidatos elegíveis a até 2 pontos percentuais do menor WMAPE diário
-e até 5% do menor RMSE. Exige-se inclinação negativa em todos os folds e previsões positivas.
-O desempate usa menos parâmetros e, com o mesmo número, prefere potência. É uma regra
-operacional, não um teste estatístico de equivalência. `T1` é somente sensibilidade.
-
-## 4. Comparação e benchmark
-
-**Tabela R2.2:** Painel atual; fonte: `comparacao_candidatos.csv`. `T1` não participa da seleção.
-
-{candidate_table}
-
-`E1` tem WMAPE ligeiramente menor que `P3`; ambos pertencem à zona prática. `P3` é escolhido
-pela interpretação direta da elasticidade, com o mesmo número de parâmetros. A diferença não
-estabelece superioridade estatística. Separar a segunda-feira em `P4` não melhora a métrica
-principal nesses folds; isso não demonstra igualdade entre os dias.
-
-![Figura R2.2: comparação dos candidatos por fold](../assets/figures/preditivo_diario/comparacao_candidatos.png)
-
-**Figura R2.2:** WMAPE diário médio e por fold. As barras de erro mostram desvio-padrão entre
-origens, sem interpretação de intervalo de confiança. Fonte: notebook `2.0.1`.
-
-Como referência adicional, a média histórica do mesmo dia da semana, sem preço, tem WMAPE diário
-médio de **{number(baseline)}%**, contra **{number(chosen["WMAPE diário (%)"])}%** de `P3`. O benchmark é
-reestimado apenas no passado de cada origem e não altera a regra de seleção declarada. Foi
-acrescentado na revisão como comparação descritiva. A diferença é evidência preditiva condicional
-a esses folds, sem identificar o efeito causal do preço. Fonte: `metricas_benchmark_calendario.csv`.
-
-## 5. Curva final e interpretação
-
-A especificação log-log é ajustada às 76 observações de desenvolvimento:
-
-`ln(volume) = {number(model["coefficients"]["const"], 4)} + ({number(beta, 4)}) ln(preço) + efeitos de calendário`.
-
-**Tabela R2.3:** Coeficientes e intervalos; fonte: `coeficientes_ajuste_final.csv`.
-
-{coefficient_table}
-
-A elasticidade assinada é $\\beta=d\\ln q/d\\ln p$. Para uma variação finita de 1% no preço,
-a mudança prevista é $100(1,01^\\beta-1)$, aproximadamente **{number(100 * (1.01**beta - 1))}%**.
-As curvas são paralelas em eixos log-log; nos eixos originais são curvas de potência com níveis
-diferentes. No mesmo preço, a sexta tem aproximadamente {number(100 * math.exp(model["coefficients"]["contexto_Sexta"]), 1)}%
-do nível estimado de segunda a quinta, sob o fator comum de calibração.
-
-A previsão em kg é a exponencial do preditor multiplicada por **{number(model["smearing_factor"], 7)}**.
-O smearing segue Duan (1983) e usa os 66 resíduos de dias úteis, enquanto os coeficientes usam
-todas as 76 linhas. Sob heterocedasticidade, um único fator não garante correção condicional exata
-em todos os preços e contextos. HC3 segue MacKinnon e White (1985): ajusta a covariância para
-inferência, sem alterar os coeficientes ou tornar o ajuste resistente a pontos influentes.
-
-**Tabela R2.4:** Exemplos da curva atual, dentro do suporte observado; fonte: artefato preditivo.
-
-{example_table}
-
-## 6. Diagnósticos e faixa de aplicação
-
-Há evidência de heterocedasticidade no teste Breusch-Pagan com variante studentizada de Koenker
-(p aproximadamente 0,0175). Durbin-Watson é aproximadamente 1,83 e os testes de autocorrelação
-curta não detectam evidência forte nos lags examinados; isso não garante independência temporal.
-A retirada de uma observação por vez preserva o sinal negativo, mas altera a magnitude da elasticidade.
-
-![Figura R2.3: diagnósticos do ajuste](../assets/figures/preditivo_diario/diagnosticos.png)
-
-**Figura R2.3:** Resíduos, QQ-plot e influência nas 76 observações. Os limiares de Cook sinalizam
-investigação e não determinam exclusão automática. Fonte: notebook `2.0.1`.
-
-**Tabela R2.5:** Faixas observadas usadas como limites de aplicação; fonte: artefato preditivo.
-
-{support_table}
-
-![Figura R2.4: curvas e dados](../assets/figures/preditivo_diario/curvas_suporte.png)
-
-**Figura R2.4:** No mesmo preço, a sexta tem menor volume previsto que segunda a quinta.
-Os pontos mostram a dispersão que a curva não explica. Fonte: notebook `2.0.1`.
-
-Permanecer entre os preços mínimo e máximo observados reduz extrapolação, mas não garante
-precisão, suporte denso no interior da faixa ou identificação causal. O preço pode responder à
-demanda antecipada, descontos por quantidade ou variáveis omitidas. As premissas comerciais do
-planejamento precisam ser avaliadas separadamente.
-
-## 7. Holdout histórico e integridade
-
-Na execução atual, fórmula, coeficientes, calibração e suporte são salvos antes de carregar
-novembro. O hash antes e depois verifica identidade de conteúdo. Não certifica que versões
-anteriores do projeto nunca tenham consultado essas datas. Se o desempenho do holdout orientar
-uma revisão, serão necessárias novas observações para uma avaliação final independente.
-As hipóteses de calendário foram formuladas no desenvolvimento completo; a comparação é
-condicional a esse catálogo, sem validação aninhada de todo o processo exploratório.
-
-**Tabela R2.6:** Avaliação nos dez dias úteis; fonte: `metricas_holdout.csv`.
-
-{holdout_table}
-
-**Tabela R2.7:** Totais semanais; fonte: `resumo_semanal_holdout.csv`.
-
-{weekly_table}
-
-![Figura R2.5: holdout](../assets/figures/preditivo_diario/holdout.png)
-
-**Figura R2.5:** O previsto acompanha parte da variação diária, mas subestima os totais das duas
-semanas. A comparação usa os preços efetivamente praticados. Fonte: notebook `2.0.1`.
-
-As duas semanas são subestimadas. O WMAPE semanal coincide com o módulo do viés agregado porque
-os erros dos dois totais têm o mesmo sinal; erros diários ainda podem se compensar dentro de
-cada semana. A proximidade entre WMAPE médio da validação e do holdout não demonstra estabilidade
-futura. O realizado não revela o volume que seria vendido nos preços escolhidos pelo otimizador.
-
-## 8. Controle de versões e artefatos
-
-O otimizador lê `models/preditivo_diario/curva_demanda.json`, de núcleo
-`{model["model_core_sha256"]}`. Os modelos de compatibilidade em `tests/fixtures/legacy/` são usados
-somente pelos testes e não são entradas da trilha atual. Coeficientes idênticos em duas
-implementações sobre os mesmos dados demonstram concordância do ajuste, não replicação independente.
-Não se combinam multiplicadores de incerteza de núcleos diferentes.
-
-A otimização principal é pontual. Sua nova sensibilidade altera premissas em instâncias independentes,
-sem substituir o modelo publicado ou apresentar cenários de estresse como intervalos preditivos.
-O [mapa de artefatos](../planejamento/plano-acao-tres-notebooks.md) identifica a origem de cada saída.
-Os notebooks numeram suas figuras e tabelas; este relatório usa a sequência própria `R2`.
-
-[Referências completas](../referencias-bibliograficas.md).
+- `notebooks/2.0-minerva-modelo-preditivo.ipynb`: validação, comparação de
+  candidatos, diagnósticos e holdout.
+- [Modelo matemático](../modelo-matematico-otimizacao-precos.md): formulação usada pelo otimizador.
+- [Referências](../referencias-bibliograficas.md).
 """
-    thresholds = read_csv("reports/tables/relaxacoes/limiares_viabilidade.csv")
-    limits = read_json("models/otimizacao/limites_flexibilizacoes.json")
-    sensitivity = read_csv("reports/tables/03_sensibilidade_premissas.csv")
-    alternatives = read_csv("reports/tables/relaxacoes/alternativas.csv")
-    stress_table = table(
-        [
-            "Premissa",
-            "Status com ligação original",
-            "Margem reotimizada sem ligação (R$)",
-            "Margem plano fixo (R$)",
-            "Metas do plano fixo",
-        ],
-        [
-            [
-                r["premissa"],
-                next(
-                    {
-                        "infeasible": "Inviável provado",
-                        "optimal": "Ótimo certificado",
-                    }.get(a["status"], a["status"])
-                    for a in sensitivity
-                    if a["premissa"] == r["premissa"] and a["ligacao_inicial_ativa"] == "True"
-                ),
-                number(r["margem_reotimizada_rs"]),
-                number(r["margem_plano_central_fixo_rs"]),
-                "Atendidas" if r["metas_plano_fixo_atendidas"] == "True" else "Descumpridas",
-            ]
-            for r in sensitivity
-            if r["ligacao_inicial_ativa"] == "False"
-        ],
-    )
-    min_rows = []
-    for r in thresholds:
-        if r["status"] == "bracketed":
-            value = number(r["minimum"], 6 if r["rule"] == "tolerance_lower" else 3)
-            description = (
-                f"Fração de tolerância inferior {value}; piso {number(r['piso_resultante_kg'], 3)} kg"
-                if r["rule"] == "tolerance_lower"
-                else f"Limite de R$ {value}/kg"
-            )
-        else:
-            description = (
-                f"Sem recuperação no intervalo examinado, até {number(r['infeasible_value'])}"
-            )
-        min_rows.append([r["regra"], description, number(r["margem_prevista_rs"])])
-    min_table = table(
-        ["Regra alterada isoladamente", "Resultado", "Margem prevista (R$)"], min_rows
-    )
-    alt_table = table(
-        [
-            "Alternativa",
-            "Condição destacada",
-            "Margem prevista (R$)",
-            "Diferença da referência factível (R$)",
-        ],
-        [
-            [
-                r["alternativa"],
-                r["destaques"],
-                number(r["margem_prevista_rs"]),
-                number(r["diferenca_referencia_factivel_rs"]),
-            ]
-            for r in alternatives
-        ],
-    )
-    diagnostic_table = table(
-        ["Semana", "Piso (kg)", "Máximo alcançável (kg)", "Déficit do piso (kg)"],
-        [
-            [w, number(r["lower_kg"]), number(r["maximum_reachable_kg"]), number(r["shortage_kg"])]
-            for w, r in diagnostic["weeks"].items()
-        ],
-    )
-    results = f"""# Da curva de demanda ao plano de preços: a história da otimização
 
-<!-- Gerado por scripts/update_project_report.py. -->
 
-Esta etapa transforma a [curva de demanda](curva-de-demanda-modelo-2-0.md) em decisões de preço.
-A narrativa acompanha os notebooks `3.0-minerva-otimizacao-precos.ipynb` e
-`3.1-minerva-simulacao-relaxacoes.ipynb`: primeiro entende o problema, depois verifica sua
-viabilidade e, por fim, compara mudanças nas regras e nas premissas.
+def render_optimization(model):
+    diagnostic = read_json("data/processed/minerva_diagnostico_infactividade.json")["diagnostic"]
+    weeks = diagnostic["weeks"]
+    limits = {r["rule"]: r for r in read_csv("reports/tables/relaxacoes/limiares_viabilidade.csv")}
+    scenarios = {r["identificacao"]: r for r in read_csv("reports/tables/03_cenarios_gurobi.csv")}
+    sensitivity = [
+        float(r["margem_reotimizada_rs"])
+        for r in read_csv("reports/tables/03_sensibilidade_premissas.csv")
+        if r["margem_reotimizada_rs"]
+    ]
+    lower, upper = weeks["semana_1"]["lower_kg"], weeks["semana_1"]["upper_kg"]
+    initial = limits["initial_transition"]
+    daily = limits["daily_variation"]
+    minimum = limits["tolerance_lower"]
+    if limits["tolerance_upper"]["status"] != "no_recovery_in_range":
+        raise ValueError("O máximo semanal passou a permitir plano; revise o resumo da etapa 3.")
+    return f"""# Otimização de preços: resumo das etapas 3.0 e 3.1
 
-O resultado principal é que **não existe plano factível com todas as regras originais**.
-O estudo identifica quais exceções recuperam a viabilidade e qual margem cada configuração
-permite prever. A escolha de aceitar uma exceção permanece uma decisão operacional.
+<!-- Gerado por scripts/update_project_report.py; atualize os artefatos, não os números à mão. -->
 
-## Uso operacional: planejar duas semanas e executar uma
+Resumo das etapas de otimização de referência (`notebooks/3.0-minerva-otimizacao-precos.ipynb`)
+e de flexibilizações (`notebooks/3.1-minerva-simulacao-relaxacoes.ipynb`). O planejamento
+escolhe um preço por dia útil, de 03 a 14/11/2025, para maximizar a margem prevista pela curva
+`{model["model_id"]}`, sujeito às regras da instância.
 
-Conforme o alinhamento informado pelo grupo com a Minerva, cada rodada otimiza duas semanas,
-mas somente a primeira é liberada para execução. A segunda é a **cauda**: participa da decisão
-atual e será recalculada antes de se tornar executável na rodada seguinte.
+## Resultado
 
-![Figura R3.1: planejamento e replanejamento semanal com novas entradas](../assets/figures/horizonte_rolante.png)
+- **Sem flexibilização não há plano.** O maior volume previsto é {number(weeks["semana_1"]["maximum_reachable_kg"])} kg
+  na primeira semana e {number(weeks["semana_2"]["maximum_reachable_kg"])} kg na segunda. O mínimo é
+  {number(lower)} kg por semana, e o máximo, {number(upper)} kg.
+- **Flexibilizar um limite por vez:**
+  - Limite da primeira mudança: é preciso chegar a R$ {number(initial["minimum"])}/kg para existir plano.
+    Sem esse limite, a margem prevista é R$ {number(scenarios["R1"]["margem_prevista_rs"])}.
+  - Variação entre dias consecutivos: plano a partir de R$ {number(daily["minimum"])}/kg, com margem de
+    R$ {number(daily["margem_prevista_rs"])} no menor limite viável.
+  - Mínimo semanal: plano a partir de {number(minimum["piso_resultante_kg"])} kg por semana, com margem de
+    R$ {number(minimum["margem_prevista_rs"])}.
+  - Máximo semanal: sozinho, não permite plano até o limite testado.
+- **Referência teórica:** sem as regras operacionais e com extrapolação da faixa de preços, a
+  margem máxima é R$ {number(scenarios["R14"]["margem_prevista_rs"])}. Esse caso não cumpre as
+  regras originais.
+- **Premissas:** com as premissas alteradas (demanda, custo, imposto e elasticidade), a margem
+  reotimizada fica entre R$ {number(min(sensitivity))} e R$ {number(max(sensitivity))}.
 
-**Figura R3.1:** A cada semana, o realizado e as entradas atualizadas alimentam uma nova instância.
-O último preço praticado conecta as rodadas; o plano anterior da cauda não é executado
-automaticamente. Fonte: elaboração própria com apoio de IA; esquema conceitual, sem resultados simulados.
+## Limites
 
-O modelo matemático pode ser reutilizado, atualizando calendário, preço inicial, custos, metas
-e outras informações disponíveis. Reestimar a curva de demanda é uma decisão adicional.
-Os notebooks atuais demonstram uma rodada de duas semanas; não executam automaticamente
-a sequência de replanejamentos da figura.
+- A alíquota de 7% é hipótese do projeto; a planilha não traz imposto.
+- O custo unitário é constante nos dez dias e igual ao do último dia do treino.
+- Estoque, capacidade, validade e transferência de compras entre dias não são modelados.
+- A margem é prevista pela curva congelada. O realizado não mostra o volume que seria vendido
+  nos preços sugeridos, então a comparação com novembro não mede ganho real.
+- Um plano ótimo vale para as entradas e tolerâncias da instância; não garante o resultado real.
 
-## 1. A curva prevê o volume; o otimizador escolhe o preço
+## Onde estão os detalhes
 
-O modelo preditivo recebe preço e contexto de calendário e devolve volume previsto. O otimizador
-usa essa relação para escolher conjuntamente os dez preços: mudar o preço de um dia pode exigir
-ajustes nos seguintes por causa do limite de variação, e os volumes precisam atender a cada semana.
-
-O objetivo é a **margem de contribuição prevista em reais**: receita após imposto menos o custo
-dos quilos previstos. Não é maximizar volume ou receita isoladamente. Um preço maior aumenta a
-margem por kg, mas reduz o volume previsto; o plano procura o melhor compromisso permitido pelas regras.
-O volume é calculado pela curva, sem liberdade para inventar uma quantidade que facilite cumprir a meta.
-
-Nesta instância, o preço anterior é R$ {number(planning["initial_price"])}/kg e o custo unitário é
-R$ {number(planning["unit_cost"][0])}/kg, ambos reconstruídos a partir de 31/10/2025. O imposto
-de {number(100 * planning["tax_rate"], 0)}% é uma premissa explícita. Nenhuma informação realizada
-das duas semanas futuras define essas entradas.
-
-## 2. Antes de maximizar a margem, é preciso existir um plano
-
-Com o preço anterior observado e mudanças de até R$ 2/kg, não é possível alcançar o piso de
-115,5 kg em nenhuma das duas semanas. Não há plano recomendado sob todas as regras originais.
-A planilha e a Figura 5 do enunciado especificam tolerância de 30%, embora o texto do enunciado
-mencione 5%. A referência usa 30%, com sensibilidade separada para 5%.
-Veja a [fonte do problema](../referencias/Minerva_Unifesp_ITA.pdf) e a
-[formulação atual](../planejamento/modelo-matematico-otimizacao-precos.md).
-
-**Tabela R3.1:** Envelope com regras originais; fonte: `minerva_diagnostico_infactividade.json`.
-
-{diagnostic_table}
-
-O preço anterior elevado e as quedas limitadas a R$ 2/kg impedem aumentar o volume previsto
-o suficiente. Isso explica o conflito: uma nova busca de preços sob as mesmas regras não elimina
-a incompatibilidade. Inviabilidade provada é diferente de terminar a busca sem encontrar solução.
-
-## 3. Qual regra precisa mudar para recuperar a viabilidade?
-
-O estudo mantém a curva central, custo unitário de R$ {number(planning["unit_cost"][0])}/kg,
-imposto hipotético de {number(100 * planning["tax_rate"], 0)}% e preço anterior de R$ {number(planning["initial_price"])}/kg.
-A variação interna não tem teto: a busca vai até R$ {number(120)}/kg apenas para localizar o primeiro
-plano. A primeira mudança é examinada separadamente. Valores de grade não são aprovação comercial.
-
-**Tabela R3.2:** Mínimos pelo lado factível da bisseção e ausências de recuperação na faixa
-examinada; fonte: `limiares_viabilidade.csv`. As tolerâncias são frações, não pontos percentuais.
-
-{min_table}
-
-O mínimo recupera a viabilidade prevista; não define a melhor decisão comercial. O limite de
-primeira mudança não é uma nova observação do preço anterior. Diminuir o piso é uma exceção à
-meta, enquanto aumentar somente o teto não corrige o volume mínimo inalcançável.
-A bisseção conserva limite inviável provado e limite com plano verificado; os valores arredondados
-na tabela não substituem a precisão dos arquivos e a verificação das restrições.
-
-![Figura R3.2: curvas de flexibilização](../assets/figures/relaxacoes/curvas.png)
-
-**Figura R3.2:** Cada painel altera uma regra e mantém as demais. As curvas distinguem recuperar
-viabilidade de obter margem adicional; casos sem plano não recebem margem. Fonte: notebook `3.1`.
-
-## 4. Recuperar a viabilidade e escolher uma alternativa são decisões diferentes
-
-Uma alteração mínima permite um plano, mas folgas adicionais ou mudanças combinadas podem
-aumentar sua margem prevista. Por isso, o segundo notebook cruza alterações de primeira mudança,
-variação interna, piso e teto, mantendo cada condição identificada.
-
-**Tabela R3.3:** Destaques da grade eficiente; fonte: `alternativas.csv`. A referência financeira
-é a recuperação mínima isolada admissível de maior margem, não o caso original inviável.
-
-{alt_table}
-
-![Figura R3.3: comparação financeira das alternativas](../assets/figures/relaxacoes/alternativas_margem.png)
-
-**Figura R3.3:** As diferenças de margem partem da referência factível e não representam ganhos
-realizados. As configurações mantêm as condições identificadas na tabela. Fonte: notebook `3.1`.
-
-As fronteiras são aproximadas pelas grades. A maior margem da grade não é a melhor combinação
-contínua certificada. Os mínimos isolados, as configurações de regras e as premissas econômicas
-não devem ser misturados sem identificar exatamente o problema resolvido.
-
-## 5. O que acontece se as premissas forem diferentes?
-
-As comparações anteriores mantêm a mesma curva e os mesmos parâmetros econômicos. Uma pergunta
-complementar é quanto os resultados dependem dessas premissas. Ela exige identificar a instância
-alterada e distinguir recalcular o plano de aplicar as decisões centrais sem adaptação.
-
-A análise adicional do notebook `3.0` muda uma premissa por vez: demanda 80%/120%, custo 95%/105%,
-imposto 0%/14% e elasticidades nos limites HC3 do desenvolvimento. Ao mudar a elasticidade, o
-intercepto gira a curva preservando o volume em R$ 1.300/kg em cada contexto. São hipóteses de
-estresse, sem probabilidades ou interpretação de intervalo preditivo conjunto. Os modelos de
-cenário recebem hashes próprios; o modelo central publicado permanece intacto.
-
-**Tabela R3.4:** Comparação de reotimização e aplicação do plano central fixo; fonte:
-`03_sensibilidade_premissas.csv`. Em todas as avaliações do plano fixo, a primeira ligação está
-removida; não se trata de um plano admissível sob a ligação original.
-
-{stress_table}
-
-![Figura R3.4: sensibilidade das premissas](../assets/figures/03_sensibilidade_premissas.png)
-
-**Figura R3.4:** Margem reotimizada e do plano central fixo; volume da primeira semana do plano
-fixo comparado com os limites originais. Fonte: notebook `3.0`.
-
-Reotimizar pressupõe conhecer a premissa antes de decidir. A avaliação do plano fixo expõe risco
-sem essa adaptação. Uma margem calculada para o plano fixo não significa que suas metas estejam
-atendidas, e nenhuma dessas diferenças representa ganho financeiro realizado.
-
-## 6. O que esta etapa permite concluir?
-
-A entrega permite diagnosticar o conflito das regras, quantificar exceções e comparar alternativas
-verificadas. Cada solução é acompanhada de status, limitante e gap, com volume e margem recalculados
-fora do solver. Um certificado de ótimo é relativo às entradas, regras e tolerâncias daquela instância;
-não garante que o realizado seguirá a previsão.
-
-O modelo principal é determinístico e usa uma relação observacional. O atendimento previsto das
-metas não é garantia probabilística. A alíquota de 7% é hipótese, porque a coluna de imposto não
-existe na instância. Custo unitário constante não significa custo fixo contábil. Estoque, capacidade,
-validade, descontos por cliente e transferência de compras entre dias não foram modelados.
-
-O horizonte de dez dias úteis é uma delimitação do estudo, sem concluir que fins de semana não
-operam. O preço médio realizado é uma aproximação da decisão. A comparação com novembro avalia
-previsões nos preços históricos, sem observar o contrafactual dos preços sugeridos.
-A decisão comercial exige escolher quais exceções são aceitáveis e avaliar o desempenho com
-novas observações. A ordem de salvamento e os hashes verificam integridade na execução;
-não demonstram que todas as versões anteriores mantiveram o período de novembro intocado.
-
-[Referências metodológicas](../referencias-bibliograficas.md).
-
-Para reprodução e detalhes, consulte o [fluxo de execução](../planejamento/plano-acao-tres-notebooks.md),
-a [otimização de referência](../planejamento/plano-otimizador-margem.md) e o
-[estudo de flexibilizações](../planejamento/plano-simulacao-relaxacoes.md).
-As figuras e tabelas deste documento usam a sequência própria `R3`.
+- `notebooks/3.0-minerva-otimizacao-precos.ipynb`: caso original, uma regra por vez
+  e comparação com o holdout.
+- `notebooks/3.1-minerva-simulacao-relaxacoes.ipynb`: menores flexibilizações,
+  combinações e alternativas comparadas.
+- [Modelo matemático](../modelo-matematico-otimizacao-precos.md): formulação das restrições.
 """
-    story = story.replace("../assets/", "../../reports/")
-    results = results.replace("../assets/", "../../reports/")
+
+
+def render_reports():
+    model = verify_sources()
     return {
-        "docs/storytelling/curva-de-demanda-modelo-2-0.md": story,
-        "docs/storytelling/storytelling-otimizacao-minerva.md": results,
+        "docs/storytelling/02-curva-de-demanda-modelo.md": render_curve(model),
+        "docs/storytelling/03-storytelling-otimizacao-minerva.md": render_optimization(model),
     }
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--check", action="store_true", help="Falha se os relatórios estiverem defasados."
+        "--check", action="store_true", help="Falha se os resumos estiverem defasados."
     )
     args = parser.parse_args()
     stale = []
@@ -586,10 +196,10 @@ def main():
             print(f"Atualizado: {name}")
     if stale:
         raise SystemExit(
-            "Relatórios defasados; execute scripts/update_project_report.py: " + ", ".join(stale)
+            "Resumos defasados; execute scripts/update_project_report.py: " + ", ".join(stale)
         )
     if args.check:
-        print("Relatórios conferidos contra os artefatos atuais.")
+        print("Resumos conferidos contra os artefatos atuais.")
 
 
 if __name__ == "__main__":
