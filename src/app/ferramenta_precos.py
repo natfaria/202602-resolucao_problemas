@@ -6,6 +6,7 @@ Execução, a partir da raiz do repositório:
 """
 
 from pathlib import Path
+import json
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -155,229 +156,328 @@ st.caption(
     "As margens são previsões condicionais ao modelo."
 )
 
-with st.form("entradas"):
-    colunas_entrada = st.columns(4)
-    valor_anterior = colunas_entrada[0].number_input(
-        "Preço anterior (R$/kg)",
-        value=float(base.initial_price),
-        min_value=1.0,
-        step=1.0,
-        format="%.2f",
-    )
-    variacao_primeira = colunas_entrada[1].number_input(
-        "Limite da primeira mudança (R$/kg)", value=float(base.init_var), min_value=0.0, step=0.5
-    )
-    variacao_diaria = colunas_entrada[2].number_input(
-        "Limite entre dias consecutivos (R$/kg)",
-        value=float(base.daily_variation),
-        min_value=0.0,
-        step=0.5,
-    )
-    meta = colunas_entrada[3].number_input(
-        "Meta semanal (kg)", value=meta_padrao, min_value=1.0, step=5.0
-    )
-    colunas_entrada = st.columns(4)
-    tolerancia_inferior = (
-        colunas_entrada[0].number_input(
-            "Tolerância abaixo da meta (%)",
-            value=float(base.tol_lower * 100),
-            min_value=0.0,
-            max_value=99.0,
-            step=1.0,
-        )
-        / 100
-    )
-    tolerancia_superior = (
-        colunas_entrada[1].number_input(
-            "Tolerância acima da meta (%)",
-            value=float(base.tol_upper * 100),
-            min_value=0.0,
-            max_value=99.0,
-            step=1.0,
-        )
-        / 100
-    )
-    custo_unico = colunas_entrada[2].number_input(
-        "Custo por kg (R$/kg)", value=float(base.costs[0]), min_value=0.01, step=1.0, format="%.2f"
-    )
-    imposto = (
-        colunas_entrada[3].number_input(
-            "Imposto sobre a receita (%)",
-            value=float(base.tax_rate * 100),
-            min_value=0.0,
-            max_value=99.0,
-            step=1.0,
-        )
-        / 100
-    )
 
-    with st.expander("Custo por dia (usado somente se a opção estiver ligada)"):
-        custo_variavel = st.toggle("Usar custo por dia no lugar do custo único", value=False)
-        tabela_custos = st.data_editor(
-            pd.DataFrame(
-                {
-                    "Dia": rotulos_dias(base.weekdays, base.weeks),
-                    "Custo (R$/kg)": [float(valor) for valor in base.costs],
-                }
-            ),
-            column_config={
-                "Custo (R$/kg)": st.column_config.NumberColumn(min_value=0.01, format="%.2f"),
-            },
-            disabled=["Dia"],
-            hide_index=True,
-            key="custos_por_dia",
-        )
-    custo = (
-        tabela_custos["Custo (R$/kg)"].astype(float).tolist() if custo_variavel else custo_unico
-    )
+aba_planejamento, aba_livre, aba_sem_extrapolacao, aba_comparacao = st.tabs([
+    "Planejamento", "Ótimo livre (consulta)",
+    "Melhor sem extrapolação (consulta)", "Otimizado e realizado (consulta)",
+])
 
-    st.markdown(
-        "**Regras a relaxar** (marcadas são removidas do cálculo; nenhuma marcada = regras originais)"
-    )
-    colunas_regras = st.columns(len(REGRAS_RELAXAVEIS))
-    relaxadas = frozenset(
-        regra
-        for coluna, (regra, rotulo) in zip(colunas_regras, REGRAS_RELAXAVEIS.items())
-        if coluna.checkbox(rotulo, key=f"relax_{regra}")
-    )
-    enviado = st.form_submit_button("Calcular plano", type="primary")
+# Abas de consulta.
 
-entradas = {
-    "valores": {
-        "valor_anterior": valor_anterior,
-        "variacao_primeira": variacao_primeira,
-        "variacao_diaria": variacao_diaria,
-        "meta": meta,
-        "tolerancia_inferior": tolerancia_inferior,
-        "tolerancia_superior": tolerancia_superior,
-        "custo": custo,
-        "imposto": imposto,
-    },
-    "relaxadas": relaxadas,
-}
+RESULTADOS = ROOT / "data/processed/minerva_otimizacao_resultado.json"
+TRES_REFERENCIAS = ROOT / "reports/tables/03_tres_referencias_margem.csv"
 
-if enviado or "resultado" not in st.session_state:
-    problema = problema_da_ferramenta(base, **entradas["valores"])
-    resultado_calculado = planejar(problema, entradas["relaxadas"])
-    st.session_state["resultado"] = resultado_calculado
-    st.session_state["restricoes"] = (
-        restricoes_da_solucao(problema, resultado_calculado)
-        if resultado_calculado["diario"] is not None
-        else None
-    )
-    st.session_state["valor_anterior"] = valor_anterior
-resultado = st.session_state["resultado"]
 
-if resultado["diario"] is None:
-    st.error(f"{resultado['status_texto']}. Maior volume alcançável por semana, abaixo.")
-    diagnostico = (
-        pd.DataFrame.from_dict(resultado["diagnostico"], orient="index")
-        .rename_axis("semana")
-        .reset_index()
-    )
-    st.dataframe(
-        diagnostico[["semana", "lower_kg", "maximum_reachable_kg", "shortage_kg"]]
-        .rename(
-            columns={
-                "lower_kg": "Mínimo exigido (kg)",
-                "maximum_reachable_kg": "Maior volume possível (kg)",
-                "shortage_kg": "Falta para o mínimo (kg)",
-            }
-        )
-        .round(2),
-        hide_index=True,
-    )
-    st.stop()
+def formatar_real(valor):
+    return f"R$ {valor:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
-if resultado["status"] == "optimal":
-    st.success(f"{resultado['status_texto']}. Regras: {resultado['cenario']}.")
-else:
-    st.warning(f"{resultado['status_texto']}. Regras: {resultado['cenario']}.")
 
-diario = resultado["diario"].assign(venda_rs=lambda d: d["preco_kg"] * d["volume_previsto_kg"])
-semanal = resultado["semanal"]
-colunas = st.columns(4)
-colunas[0].metric("Margem prevista total", formatar_real(resultado["margem_total_rs"]))
-colunas[1].metric("Venda prevista no período", formatar_real(diario["venda_rs"].sum()))
-colunas[2].metric("Volume semana 1", f"{semanal.iloc[0]['volume_previsto_kg']:.2f} kg")
-colunas[3].metric("Volume semana 2", f"{semanal.iloc[1]['volume_previsto_kg']:.2f} kg")
+def formatar_numero(valor, casas=2):
+    return f"{valor:,.{casas}f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
-restricoes = st.session_state["restricoes"]
-ativas = restricoes[restricoes["situacao"] == "Ativa"]
-if ativas.empty:
-    st.info("Nenhum limite está encostado na solução: o plano tem folga em todas as regras.")
-else:
-    st.info(rotulo_restricao_principal(ativas.iloc[0]))
-st.subheader("Limites e folgas")
-st.dataframe(
-    restricoes.rename(
-        columns={
-            "limite": "Limite",
-            "situacao": "Situação",
-            "onde": "Onde (ativo ou menor folga)",
-            "ganho_ao_relaxar_rs": "Ganho de margem ao relaxar sozinho (R$)",
-        }
-    )[
-        [
-            "Limite",
-            "Situação",
-            "Onde (ativo ou menor folga)",
-            "Ganho de margem ao relaxar sozinho (R$)",
-        ]
-    ],
-    hide_index=True,
-    width="stretch",
-    column_config={
-        "Ganho de margem ao relaxar sozinho (R$)": st.column_config.NumberColumn(format="R$ %.2f"),
-    },
-)
 
-tabela = pd.DataFrame(
-    {
-        "Dia": rotulos_dias(diario["dia_semana"], diario["semana"]),
+@st.cache_data
+def cenario_salvo(chave):
+    return json.loads(RESULTADOS.read_text(encoding="utf-8"))["scenarios"][chave]
+
+
+def mostrar_cenario_fixo(chave, titulo, descricao, aviso=None):
+    cenario = cenario_salvo(chave)
+    st.subheader(titulo)
+    st.write(descricao)
+    if aviso:
+        st.warning(aviso)
+    st.caption(f"Consulta somente leitura: resultado salvo pelo notebook 3.0 (cenário `{chave}`).")
+    colunas = st.columns(3)
+    colunas[0].metric("Margem prevista (duas semanas)", formatar_real(cenario["total_margin_rs"]))
+    volume_total = sum(dia["volume_previsto_kg"] for dia in cenario["daily"])
+    colunas[1].metric("Volume previsto (kg)", formatar_numero(volume_total, 1))
+    colunas[2].metric("Status do solver", cenario["status"])
+    diario = pd.DataFrame(cenario["daily"])
+    tabela = pd.DataFrame({
+        "Data": pd.to_datetime(diario["data"]).dt.strftime("%d/%m/%Y"),
+        "Dia": diario["dia_semana"],
         "Preço (R$/kg)": diario["preco_kg"].round(2),
-        "Mudança (R$/kg)": diario["variacao_preco_rs"].round(2),
         "Volume previsto (kg)": diario["volume_previsto_kg"].round(2),
-        "Venda do dia (R$)": diario["venda_rs"].round(2),
-        "Imposto (R$)": diario["imposto_rs"].round(2),
         "Margem prevista (R$)": diario["margem_prevista_rs"].round(2),
         "Fora da faixa observada": diario["extrapolado"],
-    }
-)
-st.subheader("Plano diário")
-st.caption("Venda do dia = preço × volume previsto, antes do imposto.")
-st.dataframe(
-    tabela,
-    hide_index=True,
-    width="stretch",
-    column_config={
-        "Preço (R$/kg)": st.column_config.NumberColumn(format="%.2f"),
-        "Mudança (R$/kg)": st.column_config.NumberColumn(format="%.2f"),
-        "Volume previsto (kg)": st.column_config.NumberColumn(format="%.2f"),
-        "Venda do dia (R$)": st.column_config.NumberColumn(format="R$ %.2f"),
-        "Imposto (R$)": st.column_config.NumberColumn(format="R$ %.2f"),
-        "Margem prevista (R$)": st.column_config.NumberColumn(format="R$ %.2f"),
-    },
-)
-st.download_button(
-    "Baixar plano diário (CSV)",
-    tabela.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
-    file_name="plano_precos.csv",
-    mime="text/csv",
-)
+    })
+    st.subheader("Plano diário")
+    st.dataframe(tabela, hide_index=True, width="stretch")
+    semanal = pd.DataFrame(cenario["weekly"])
+    st.subheader("Resumo semanal")
+    st.dataframe(
+        pd.DataFrame({
+            "Semana": semanal["semana"].str.replace("_", " "),
+            "Mínimo (kg)": semanal["limite_inferior_kg"].round(2),
+            "Volume previsto (kg)": semanal["volume_previsto_kg"].round(2),
+            "Máximo (kg)": semanal["limite_superior_kg"].round(2),
+            "Margem prevista (R$)": semanal["margem_prevista_rs"].round(2),
+        }),
+        hide_index=True, width="stretch",
+    )
+    fig, eixos = plt.subplots(1, 2, figsize=(11, 3.8))
+    rotulos = [f"{pd.to_datetime(d):%d/%m}" for d in diario["data"]]
+    eixos[0].plot(rotulos, diario["preco_kg"], "o-", color="#24547a")
+    eixos[0].set(title="Preço por dia", ylabel="R$/kg")
+    eixos[1].bar(rotulos, diario["volume_previsto_kg"], color="#a35b20")
+    eixos[1].set(title="Volume previsto por dia", ylabel="kg")
+    for eixo in eixos:
+        eixo.tick_params(axis="x", rotation=45)
+        eixo.grid(alpha=.2)
+    fig.tight_layout()
+    st.pyplot(fig)
 
-st.subheader("Resumo semanal")
-resumo = pd.DataFrame(
-    {
-        "Semana": semanal["semana"].str.replace("_", " "),
-        "Mínimo (kg)": semanal["limite_inferior_kg"].round(2),
-        "Volume previsto (kg)": semanal["volume_previsto_kg"].round(2),
-        "Máximo (kg)": semanal["limite_superior_kg"].round(2),
-        "Margem prevista (R$)": semanal["margem_prevista_rs"].round(2),
-        "Preço médio (R$/kg)": semanal["preco_medio_kg"].round(2),
-    }
-)
-st.dataframe(resumo, hide_index=True, width="stretch")
+with aba_livre:
+    mostrar_cenario_fixo(
+        "var1_meta1_init1_ext1",
+        "Ótimo livre",
+        "Todas as restrições retiradas, com extrapolação. É uma referência teórica, não um plano para aplicar.",
+        aviso="Os preços estão abaixo da faixa observada no treino (R$ 1.201 a R$ 1.365/kg).",
+    )
 
-st.subheader("Gráficos")
-st.pyplot(desenhar_graficos(diario, semanal, st.session_state["valor_anterior"]), width=820)
+with aba_sem_extrapolacao:
+    mostrar_cenario_fixo(
+        "var1_meta1_init1_ext0",
+        "Melhor margem sem extrapolação",
+        "Retira o limite entre dias, o mínimo e máximo semanais e o limite da primeira mudança. "
+        "Os preços ficam dentro da faixa observada no treino.",
+    )
+
+with aba_comparacao:
+    st.subheader("Otimizado, curva no preço praticado e realizado")
+    st.write(
+        "Margens com o custo do planejamento. O ganho do otimizado é a margem do otimizado dividida pela "
+        "referência, menos um. Como a margem do otimizado é prevista pela curva, o percentual também é previsto."
+    )
+    st.caption("Consulta somente leitura: tabela gerada pelo notebook 3.0 (seção 8.2).")
+    referencias = pd.read_csv(TRES_REFERENCIAS)
+    st.dataframe(referencias.round(2), hide_index=True, width="stretch")
+
+with aba_planejamento:
+    with st.form("entradas"):
+        colunas_entrada = st.columns(4)
+        valor_anterior = colunas_entrada[0].number_input(
+            "Preço anterior (R$/kg)",
+            value=float(base.initial_price),
+            min_value=1.0,
+            step=1.0,
+            format="%.2f",
+        )
+        variacao_primeira = colunas_entrada[1].number_input(
+            "Limite da primeira mudança (R$/kg)", value=float(base.init_var), min_value=0.0, step=0.5
+        )
+        variacao_diaria = colunas_entrada[2].number_input(
+            "Limite entre dias consecutivos (R$/kg)",
+            value=float(base.daily_variation),
+            min_value=0.0,
+            step=0.5,
+        )
+        meta = colunas_entrada[3].number_input(
+            "Meta semanal (kg)", value=meta_padrao, min_value=1.0, step=5.0
+        )
+        colunas_entrada = st.columns(4)
+        tolerancia_inferior = (
+            colunas_entrada[0].number_input(
+                "Tolerância abaixo da meta (%)",
+                value=float(base.tol_lower * 100),
+                min_value=0.0,
+                max_value=99.0,
+                step=1.0,
+            )
+            / 100
+        )
+        tolerancia_superior = (
+            colunas_entrada[1].number_input(
+                "Tolerância acima da meta (%)",
+                value=float(base.tol_upper * 100),
+                min_value=0.0,
+                max_value=99.0,
+                step=1.0,
+            )
+            / 100
+        )
+        custo_unico = colunas_entrada[2].number_input(
+            "Custo por kg (R$/kg)", value=float(base.costs[0]), min_value=0.01, step=1.0, format="%.2f"
+        )
+        imposto = (
+            colunas_entrada[3].number_input(
+                "Imposto sobre a receita (%)",
+                value=float(base.tax_rate * 100),
+                min_value=0.0,
+                max_value=99.0,
+                step=1.0,
+            )
+            / 100
+        )
+
+        with st.expander("Custo por dia (usado somente se a opção estiver ligada)"):
+            custo_variavel = st.toggle("Usar custo por dia no lugar do custo único", value=False)
+            tabela_custos = st.data_editor(
+                pd.DataFrame(
+                    {
+                        "Dia": rotulos_dias(base.weekdays, base.weeks),
+                        "Custo (R$/kg)": [float(valor) for valor in base.costs],
+                    }
+                ),
+                column_config={
+                    "Custo (R$/kg)": st.column_config.NumberColumn(min_value=0.01, format="%.2f"),
+                },
+                disabled=["Dia"],
+                hide_index=True,
+                key="custos_por_dia",
+            )
+        custo = (
+            tabela_custos["Custo (R$/kg)"].astype(float).tolist() if custo_variavel else custo_unico
+        )
+
+        st.markdown(
+            "**Regras a relaxar** (marcadas são removidas do cálculo; nenhuma marcada = regras originais)"
+        )
+        colunas_regras = st.columns(len(REGRAS_RELAXAVEIS))
+        relaxadas = frozenset(
+            regra
+            for coluna, (regra, rotulo) in zip(colunas_regras, REGRAS_RELAXAVEIS.items())
+            if coluna.checkbox(rotulo, key=f"relax_{regra}")
+        )
+        enviado = st.form_submit_button("Calcular plano", type="primary")
+
+    entradas = {
+        "valores": {
+            "valor_anterior": valor_anterior,
+            "variacao_primeira": variacao_primeira,
+            "variacao_diaria": variacao_diaria,
+            "meta": meta,
+            "tolerancia_inferior": tolerancia_inferior,
+            "tolerancia_superior": tolerancia_superior,
+            "custo": custo,
+            "imposto": imposto,
+        },
+        "relaxadas": relaxadas,
+    }
+
+    if enviado or "resultado" not in st.session_state:
+        problema = problema_da_ferramenta(base, **entradas["valores"])
+        resultado_calculado = planejar(problema, entradas["relaxadas"])
+        st.session_state["resultado"] = resultado_calculado
+        st.session_state["restricoes"] = (
+            restricoes_da_solucao(problema, resultado_calculado)
+            if resultado_calculado["diario"] is not None
+            else None
+        )
+        st.session_state["valor_anterior"] = valor_anterior
+    resultado = st.session_state["resultado"]
+
+    if resultado["diario"] is None:
+        st.error(f"{resultado['status_texto']}. Maior volume alcançável por semana, abaixo.")
+        diagnostico = (
+            pd.DataFrame.from_dict(resultado["diagnostico"], orient="index")
+            .rename_axis("semana")
+            .reset_index()
+        )
+        st.dataframe(
+            diagnostico[["semana", "lower_kg", "maximum_reachable_kg", "shortage_kg"]]
+            .rename(
+                columns={
+                    "lower_kg": "Mínimo exigido (kg)",
+                    "maximum_reachable_kg": "Maior volume possível (kg)",
+                    "shortage_kg": "Falta para o mínimo (kg)",
+                }
+            )
+            .round(2),
+            hide_index=True,
+        )
+        st.stop()
+
+    if resultado["status"] == "optimal":
+        st.success(f"{resultado['status_texto']}. Regras: {resultado['cenario']}.")
+    else:
+        st.warning(f"{resultado['status_texto']}. Regras: {resultado['cenario']}.")
+
+    diario = resultado["diario"].assign(venda_rs=lambda d: d["preco_kg"] * d["volume_previsto_kg"])
+    semanal = resultado["semanal"]
+    colunas = st.columns(4)
+    colunas[0].metric("Margem prevista total", formatar_real(resultado["margem_total_rs"]))
+    colunas[1].metric("Venda prevista no período", formatar_real(diario["venda_rs"].sum()))
+    colunas[2].metric("Volume semana 1", f"{semanal.iloc[0]['volume_previsto_kg']:.2f} kg")
+    colunas[3].metric("Volume semana 2", f"{semanal.iloc[1]['volume_previsto_kg']:.2f} kg")
+
+    restricoes = st.session_state["restricoes"]
+    ativas = restricoes[restricoes["situacao"] == "Ativa"]
+    if ativas.empty:
+        st.info("Nenhum limite está encostado na solução: o plano tem folga em todas as regras.")
+    else:
+        st.info(rotulo_restricao_principal(ativas.iloc[0]))
+    st.subheader("Limites e folgas")
+    st.dataframe(
+        restricoes.rename(
+            columns={
+                "limite": "Limite",
+                "situacao": "Situação",
+                "onde": "Onde (ativo ou menor folga)",
+                "ganho_ao_relaxar_rs": "Ganho de margem ao relaxar sozinho (R$)",
+            }
+        )[
+            [
+                "Limite",
+                "Situação",
+                "Onde (ativo ou menor folga)",
+                "Ganho de margem ao relaxar sozinho (R$)",
+            ]
+        ],
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "Ganho de margem ao relaxar sozinho (R$)": st.column_config.NumberColumn(format="R$ %.2f"),
+        },
+    )
+
+    tabela = pd.DataFrame(
+        {
+            "Dia": rotulos_dias(diario["dia_semana"], diario["semana"]),
+            "Preço (R$/kg)": diario["preco_kg"].round(2),
+            "Mudança (R$/kg)": diario["variacao_preco_rs"].round(2),
+            "Volume previsto (kg)": diario["volume_previsto_kg"].round(2),
+            "Venda do dia (R$)": diario["venda_rs"].round(2),
+            "Imposto (R$)": diario["imposto_rs"].round(2),
+            "Margem prevista (R$)": diario["margem_prevista_rs"].round(2),
+            "Fora da faixa observada": diario["extrapolado"],
+        }
+    )
+    st.subheader("Plano diário")
+    st.caption("Venda do dia = preço × volume previsto, antes do imposto.")
+    st.dataframe(
+        tabela,
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "Preço (R$/kg)": st.column_config.NumberColumn(format="%.2f"),
+            "Mudança (R$/kg)": st.column_config.NumberColumn(format="%.2f"),
+            "Volume previsto (kg)": st.column_config.NumberColumn(format="%.2f"),
+            "Venda do dia (R$)": st.column_config.NumberColumn(format="R$ %.2f"),
+            "Imposto (R$)": st.column_config.NumberColumn(format="R$ %.2f"),
+            "Margem prevista (R$)": st.column_config.NumberColumn(format="R$ %.2f"),
+        },
+    )
+    st.download_button(
+        "Baixar plano diário (CSV)",
+        tabela.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig"),
+        file_name="plano_precos.csv",
+        mime="text/csv",
+    )
+
+    st.subheader("Resumo semanal")
+    resumo = pd.DataFrame(
+        {
+            "Semana": semanal["semana"].str.replace("_", " "),
+            "Mínimo (kg)": semanal["limite_inferior_kg"].round(2),
+            "Volume previsto (kg)": semanal["volume_previsto_kg"].round(2),
+            "Máximo (kg)": semanal["limite_superior_kg"].round(2),
+            "Margem prevista (R$)": semanal["margem_prevista_rs"].round(2),
+            "Preço médio (R$/kg)": semanal["preco_medio_kg"].round(2),
+        }
+    )
+    st.dataframe(resumo, hide_index=True, width="stretch")
+
+    st.subheader("Gráficos")
+    st.pyplot(desenhar_graficos(diario, semanal, st.session_state["valor_anterior"]), width=820)
