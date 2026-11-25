@@ -194,7 +194,7 @@ def test_saved_partial_grid_covers_all_four_families_and_selects_better_margins(
         assert grid.loc[grid["n_familias_flexibilizadas"] == number, "plano_verificado"].any()
     assert grid["tolerancia_inferior"].nunique() > 1
     assert grid["tolerancia_superior"].nunique() > 1
-       alternatives = pd.DataFrame(payload["alternatives"])
+    alternatives = pd.DataFrame(payload["alternatives"])
     assert alternatives["dominancia_financeira"].eq("eficiente").all()
     assert alternatives["diferenca_referencia_factivel_rs"].gt(0.10).all()
     assert alternatives["n_familias_flexibilizadas"].ge(2).all()
@@ -213,7 +213,6 @@ def test_saved_partial_grid_covers_all_four_families_and_selects_better_margins(
     assert weekly["folga_inferior_kg"].ge(-1e-4).all()
     assert weekly["folga_superior_kg"].ge(-1e-4).all()
     reference = payload["cases"][payload["benchmarks"]["minimum_recovery_reference"]["case_id"]]
-    assert reference["parameters"]["daily_variation"] <= 15
 
 
 def test_saved_relaxations_use_the_published_curve_and_fixed_historical_inputs(problem):
@@ -225,7 +224,6 @@ def test_saved_relaxations_use_the_published_curve_and_fixed_historical_inputs(p
     assert payload["holdout_used"] is False
     assert payload["cases"]
     for result in payload["cases"].values():
-        assert result["parameters"]["daily_variation"] <= 15
         assert result["initial_price"] == problem.initial_price
         assert result["model_core_sha256"] == problem.artifact["model_core_sha256"]
         if result["daily"] is None:
@@ -293,10 +291,19 @@ def test_saved_intro_curves_include_both_sides_of_feasibility(problem):
                 if row["valor_limite"] is not None and abs(row["valor_limite"] - value) < 1e-9
             ]
             assert len(matches) == 1 and matches[0]["status"] == expected
+    daily_threshold = payload["thresholds"]["daily_variation"]
+    assert daily_threshold["status"] == "bracketed"
+    daily = [row for row in payload["curves"] if row["regra"] == "daily_variation"]
+    assert all(
+        row["status"] == "infeasible"
+        for row in daily
+        if row["valor_limite"] <= daily_threshold["infeasible_value"] + 1e-9
+    )
+    assert any(row["status"] == "optimal" for row in daily)
     assert all(
         row["status"] == "infeasible"
         for row in payload["curves"]
-        if row["regra"] in {"daily_variation", "tolerance_upper"}
+        if row["regra"] == "tolerance_upper"
     )
     assert any(
         row["regra"] == "tolerance_lower" and row["valor_limite"] == 0 and row["plano_verificado"]
