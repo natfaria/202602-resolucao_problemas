@@ -1,5 +1,5 @@
 rule,status,minimum,infeasible_value,feasible_value,precision,case_id,margem_prevista_rs,regra,piso_resultante_kg
-daily_variation,no_recovery_in_range,,15.0,,0.001,c0001,,Variação interna,
-initial_transition,bracketed,44.393646240234375,44.39274597167969,44.393646240234375,0.001,c0018,40520.37838785165,Primeira mudança de preço,
-tolerance_lower,bracketed,0.5334133625030517,0.533412742614746,0.5334133625030517,1e-06,c0040,33336.9354474042,Redução do mínimo semanal,76.98679518699647
-tolerance_upper,no_recovery_in_range,,0.95,,1e-06,c0041,,Ampliação do máximo semanal,
+daily_variation,bracketed,24.671463012695312,24.670562744140625,24.671463012695312,0.001,c0018,43847.13386275642,Variação interna,
+initial_transition,bracketed,44.393646240234375,44.39274597167969,44.393646240234375,0.001,c0035,40520.37838785165,Primeira mudança de preço,
+tolerance_lower,bracketed,0.5334133625030517,0.533412742614746,0.5334133625030517,1e-06,c0057,33336.9354474042,Redução do mínimo semanal,76.98679518699647
+tolerance_upper,no_recovery_in_range,,0.95,,1e-06,c0058,,Ampliação do máximo semanal,
